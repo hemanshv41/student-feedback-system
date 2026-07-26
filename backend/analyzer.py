@@ -49,7 +49,8 @@ TOPIC_KEYWORDS = {
 # Lazy loading variables for models
 _sentiment_pipeline = None
 _sentence_transformer_model = None
-_use_transformers = True  # We try to use them
+# Support disabling heavy transformers on low-memory servers (e.g. Render Free Tier 512MB RAM)
+_use_transformers = os.environ.get("DISABLE_AI_TRANSFORMERS", "false").lower() != "true"
 
 def load_ai_models():
     """Lazy load Hugging Face models to keep startup fast."""
