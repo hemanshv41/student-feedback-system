@@ -4,15 +4,15 @@ import {
   PieChart, Pie, Legend
 } from 'recharts';
 import { 
-  BrainCircuit, LayoutDashboard, MessageSquare, Bot, LogIn, LogOut, 
-  Sun, Moon, Star, AlertTriangle, CheckCircle, RefreshCw, Filter, 
-  FileText, Download, Users, BookOpen, Clock, Activity, Sparkles, Send,
+  BrainCircuit, MessageSquare, Bot, LogIn, LogOut, 
+  Star, AlertTriangle, CheckCircle, RefreshCw, Filter, 
+  FileText, BookOpen, Clock, Activity, Sparkles, Send,
   ArrowRight
 } from 'lucide-react';
 
-const API_BASE_URL = 'http://localhost:8000';
+const API_BASE_URL = `${window.location.protocol}//${window.location.hostname}:8000`;
 
-const SECTIONS = [
+const DEFAULT_SECTIONS = [
   {
     title: "Teaching Quality",
     questions: [
@@ -86,20 +86,20 @@ const SECTIONS = [
   }
 ];
 
-const initializeRatings = () => {
+const initializeRatings = (sections) => {
   const ratings = {};
-  SECTIONS.forEach(sec => {
+  (sections || []).forEach(sec => {
     ratings[sec.title] = {};
-    sec.questions.forEach(q => {
+    (sec.questions || []).forEach(q => {
       ratings[sec.title][q.key] = 5; // Default to 5 stars
     });
   });
   return ratings;
 };
 
-const initializeTexts = () => {
+const initializeTexts = (sections) => {
   const texts = {};
-  SECTIONS.forEach(sec => {
+  (sections || []).forEach(sec => {
     texts[sec.title] = "";
   });
   return texts;
@@ -134,9 +134,12 @@ function App() {
       const savedUser = localStorage.getItem('user');
       if (savedToken && savedUser) {
         const u = JSON.parse(savedUser);
-        return u.role === 'student' ? 'student' : 'dashboard';
+        return u.role === 'student' ? 'student-dashboard' : 'dashboard';
       }
     } catch (e) {}
+    if (window.location.pathname === '/admin') {
+      return 'admin-login';
+    }
     return 'login';
   });
   const [formStep, setFormStep] = useState(0); // 0: metadata selection, 1-7: sections, 8: review & submit
@@ -165,16 +168,26 @@ function App() {
   const [loginForm, setLoginForm] = useState({ username: '', password: '' });
   const [loginError, setLoginError] = useState('');
 
+  // Feedback categories and questions state (Admin dynamic template)
+  const [feedbackSections, setFeedbackSections] = useState(() => {
+    try {
+      const saved = localStorage.getItem('custom_feedback_sections');
+      return saved ? JSON.parse(saved) : DEFAULT_SECTIONS;
+    } catch (e) {
+      return DEFAULT_SECTIONS;
+    }
+  });
+
   // Student Feedback form state
-  const [studentForm, setStudentForm] = useState({
+  const [studentForm, setStudentForm] = useState(() => ({
     subject_id: '',
     teacher_id: '',
     semester: 'Semester 1',
     student_roll: '',
     student_dept: 'Computer Science',
-    section_ratings: initializeRatings(),
-    section_texts: initializeTexts()
-  });
+    section_ratings: initializeRatings(feedbackSections),
+    section_texts: initializeTexts(feedbackSections)
+  }));
   const [submittingFeedback, setSubmittingFeedback] = useState(false);
   const [feedbackSuccess, setFeedbackSuccess] = useState(false);
   const [feedbackError, setFeedbackError] = useState('');
@@ -198,6 +211,44 @@ function App() {
   const [chatbotTyping, setChatbotTyping] = useState(false);
   const chatEndRef = useRef(null);
 
+  // User Management state
+  const [usersList, setUsersList] = useState([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [usersError, setUsersError] = useState('');
+  const [userRoleFilter, setUserRoleFilter] = useState('all'); // 'all', 'student', 'faculty'
+  const [userSearchQuery, setUserSearchQuery] = useState('');
+
+  const fetchUsers = async () => {
+    if (!token) return;
+    setLoadingUsers(true);
+    setUsersError('');
+    try {
+      const data = await apiFetch('/api/users');
+      setUsersList(data || []);
+    } catch (err) {
+      setUsersError(err.message || 'Failed to retrieve university user directory');
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
+
+  const handleToggleBlock = async (targetUser) => {
+    try {
+      const isCurrentlyBlocked = targetUser.is_blocked;
+      const endpoint = `/api/users/${targetUser.id}/${isCurrentlyBlocked ? 'unblock' : 'block'}`;
+      const updatedUser = await apiFetch(endpoint, { method: 'PUT' });
+      setUsersList(prev => prev.map(u => u.id === targetUser.id ? { ...u, is_blocked: updatedUser.is_blocked } : u));
+    } catch (err) {
+      alert(err.message || 'Failed to update block state for user');
+    }
+  };
+
+  useEffect(() => {
+    if (token && currentView === 'users') {
+      fetchUsers();
+    }
+  }, [token, currentView]);
+
   // App initialization
   useEffect(() => {
     // Apply dark mode on mount
@@ -205,6 +256,29 @@ function App() {
     
     // Load metadata
     fetchMetadata();
+
+    // Verify token validity on startup (checks for block status)
+    const verifyToken = async () => {
+      const savedToken = localStorage.getItem('token');
+      if (savedToken) {
+        try {
+          const res = await fetch(`${API_BASE_URL}/api/auth/me`, {
+            headers: { 'Authorization': `Bearer ${savedToken}` }
+          });
+          if (!res.ok) {
+            handleLogout();
+          } else {
+            const data = await res.json();
+            if (data.is_blocked) {
+              handleLogout();
+            }
+          }
+        } catch (e) {
+          // Network error or backend offline, keep local state
+        }
+      }
+    };
+    verifyToken();
   }, []);
 
   // Fetch dashboard and feedback list whenever view changes, or filters change
@@ -337,7 +411,7 @@ function App() {
       setLoginForm({ username: '', password: '' });
       
       if (data.role === 'student') {
-        setCurrentView('student');
+        setCurrentView('student-dashboard');
       } else {
         setCurrentView('dashboard');
       }
@@ -400,11 +474,45 @@ function App() {
   };
 
   const handleLogout = () => {
+    const isCurrentlyAdmin = user?.role === 'admin' || window.location.pathname === '/admin';
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     setToken('');
     setUser(null);
-    setCurrentView('login');
+    if (isCurrentlyAdmin) {
+      window.history.pushState(null, '', '/admin');
+      setCurrentView('admin-login');
+    } else {
+      window.history.pushState(null, '', '/');
+      setCurrentView('login');
+    }
+  };
+
+  const navigateTo = (view) => {
+    setCurrentView(view);
+    if (view === 'admin-login') {
+      window.history.pushState(null, '', '/admin');
+    } else if (view === 'login') {
+      window.history.pushState(null, '', '/');
+    }
+  };
+
+  const startFeedbackForSubject = (subject) => {
+    setStudentForm(prev => ({
+      ...prev,
+      subject_id: subject.id,
+      semester: subject.semester || 'Semester 1'
+    }));
+    // Auto-select first matching teacher for this semester
+    const matchingTeachers = teachers.filter(t => t.semester === subject.semester);
+    if (matchingTeachers.length > 0) {
+      setStudentForm(prev => ({
+        ...prev,
+        teacher_id: matchingTeachers[0].id
+      }));
+    }
+    setFormStep(0);
+    setCurrentView('student');
   };
 
   const handleSemesterChange = (selectedSem) => {
@@ -495,8 +603,8 @@ function App() {
         setFormStep(0);
         setStudentForm(prev => ({
           ...prev,
-          section_ratings: initializeRatings(),
-          section_texts: initializeTexts()
+          section_ratings: initializeRatings(feedbackSections),
+          section_texts: initializeTexts(feedbackSections)
         }));
       }, 3500);
 
@@ -614,196 +722,350 @@ function App() {
   const BAR_COLORS = ['#3b82f6', '#06b6d4', '#8b5cf6', '#f59e0b', '#ef4444'];
 
   return (
-    <div className="flex min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 transition-colors duration-300">
+    <div className="relative min-h-screen bg-[#080809] text-[#e4e4e7] flex flex-col font-sans transition-colors duration-300 overflow-x-hidden">
       
-      {/* -------------------- SIDEBAR NAVIGATION (Admins/Faculty only) -------------------- */}
-      {token && (currentView === 'dashboard' || currentView === 'feedback-list') && (
-        <aside className="w-64 bg-slate-950 border-r border-slate-800 flex flex-col justify-between shrink-0 hidden md:flex print:hidden">
-          <div>
-            {/* Logo */}
-            <div className="h-16 flex items-center px-6 border-b border-slate-800 gap-3">
-              <div className="p-2 bg-blue-600 rounded-lg text-white">
-                <BrainCircuit className="w-6 h-6" />
+      {/* Liquid Aurora Background Glows */}
+      <div className="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] rounded-full bg-gradient-to-tr from-lime-500/10 to-emerald-500/5 blur-[120px] animate-aurora-1 pointer-events-none z-0"></div>
+      <div className="absolute bottom-[-10%] right-[-10%] w-[60vw] h-[60vw] rounded-full bg-gradient-to-br from-indigo-500/15 via-purple-500/10 to-pink-500/5 blur-[140px] animate-aurora-2 pointer-events-none z-0"></div>
+      <div className="absolute top-[40%] left-[30%] w-[45vw] h-[45vw] rounded-full bg-gradient-to-tr from-cyan-500/10 to-blue-500/5 blur-[120px] animate-aurora-1 pointer-events-none z-0"></div>
+
+      {/* Floating Pill Header (Only when logged in) */}
+      {token && (
+        <header className="w-full max-w-6xl mx-auto px-4 pt-6 pb-2 sticky top-0 z-30 print:hidden">
+          <div className="glass-pill-nav h-16 px-4 flex items-center justify-between gap-4">
+            
+            {/* Left Brand Area */}
+            <div className="flex items-center gap-2 shrink-0 cursor-pointer" onClick={() => navigateTo(user?.role === 'student' ? 'student-dashboard' : 'dashboard')}>
+              <div className="p-2 bg-blue-600 rounded-full text-white">
+                <BrainCircuit className="w-4 h-4" />
               </div>
-              <div>
-                <h1 className="font-bold text-base leading-tight text-white">EduFeedback AI</h1>
-                <span className="text-xs text-slate-400">Decision Support System</span>
-              </div>
+              <span className="font-bold text-sm text-white hidden sm:inline leading-none">EduFeedback AI</span>
             </div>
 
-            {/* Nav links */}
-            <nav className="p-4 space-y-1">
-              <button 
-                onClick={() => setCurrentView('dashboard')}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium text-sm transition ${
-                  currentView === 'dashboard' 
-                    ? 'bg-blue-600/10 text-blue-400' 
-                    : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
+            {/* Middle Nav Links (pill tabs) */}
+            <nav className="flex items-center bg-slate-950/40 p-0.5 rounded-full border border-white/5">
+              {/* Dashboard Tab */}
+              {user?.role === 'student' ? (
+                <button
+                  onClick={() => setCurrentView('student-dashboard')}
+                  className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all duration-300 cursor-pointer ${
+                    currentView === 'student-dashboard'
+                      ? 'bg-blue-600 text-white shadow-md'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  Dashboard
+                </button>
+              ) : (
+                <button
+                  onClick={() => setCurrentView('dashboard')}
+                  className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all duration-300 cursor-pointer ${
+                    currentView === 'dashboard'
+                      ? 'bg-blue-650 text-white shadow-md'
+                      : 'text-slate-405 hover:text-slate-200'
+                  }`}
+                >
+                  Overview
+                </button>
+              )}
+
+              {/* Feedback Stream (Faculty & Admin) */}
+              {user?.role !== 'student' && (
+                <button
+                  onClick={() => setCurrentView('feedback-list')}
+                  className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all duration-300 cursor-pointer ${
+                    currentView === 'feedback-list'
+                      ? 'bg-blue-650 text-white shadow-md'
+                      : 'text-slate-405 hover:text-slate-200'
+                  }`}
+                >
+                  Feedbacks
+                </button>
+              )}
+
+              {/* Users controls (Admin only) */}
+              {user?.role === 'admin' && (
+                <button
+                  onClick={() => setCurrentView('users')}
+                  className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all duration-300 cursor-pointer ${
+                    currentView === 'users'
+                      ? 'bg-blue-650 text-white shadow-md'
+                      : 'text-slate-405 hover:text-slate-200'
+                  }`}
+                >
+                  Accounts
+                </button>
+              )}
+
+              {/* Form Designer (Admin only) */}
+              {user?.role === 'admin' && (
+                <button
+                  onClick={() => setCurrentView('form-designer')}
+                  className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all duration-300 cursor-pointer ${
+                    currentView === 'form-designer'
+                      ? 'bg-blue-650 text-white shadow-md'
+                      : 'text-slate-405 hover:text-slate-200'
+                  }`}
+                >
+                  Designer
+                </button>
+              )}
+
+              {/* Share/Give Feedback Form tab */}
+              <button
+                onClick={() => {
+                  if (user?.role === 'student') {
+                    setStudentForm(prev => ({
+                      ...prev,
+                      subject_id: '',
+                      teacher_id: '',
+                      semester: 'Semester 1'
+                    }));
+                    setFormStep(0);
+                  }
+                  setCurrentView('student');
+                }}
+                className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all duration-300 cursor-pointer ${
+                  currentView === 'student'
+                    ? 'bg-blue-655 text-white shadow-md'
+                    : 'text-slate-405 hover:text-slate-200'
                 }`}
               >
-                <LayoutDashboard className="w-4 h-4" /> Dashboard Overview
-              </button>
-
-              <button 
-                onClick={() => setCurrentView('feedback-list')}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium text-sm transition ${
-                  currentView === 'feedback-list' 
-                    ? 'bg-blue-600/10 text-blue-400' 
-                    : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
-                }`}
-              >
-                <MessageSquare className="w-4 h-4" /> Live Feedback Stream
-              </button>
-
-              <button 
-                onClick={() => setCurrentView('student')}
-                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-slate-200 font-medium text-sm transition"
-              >
-                <FileText className="w-4 h-4" /> Student Form View
+                {user?.role === 'student' ? 'Evaluate' : 'Feedback Form'}
               </button>
             </nav>
-          </div>
 
-          {/* User profile & logout */}
-          <div className="p-4 border-t border-slate-800 space-y-3">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-full bg-slate-800 flex items-center justify-center font-bold text-blue-400 border border-slate-700">
-                {user?.username?.substring(0, 2).toUpperCase() || 'AD'}
-              </div>
-              <div className="overflow-hidden">
-                <p className="text-sm font-medium text-slate-200 truncate">
+            {/* Right User Profile Area */}
+            <div className="flex items-center gap-3 shrink-0">
+              <div className="hidden md:flex flex-col items-end leading-tight">
+                <span className="text-xs font-bold text-slate-200">
                   {user?.role === 'faculty' && teachers.find(t => t.id === user.teacher_id)
                     ? teachers.find(t => t.id === user.teacher_id).name
-                    : (user?.username === 'admin' ? 'Dr. Sarah Jenkins' : user?.username)}
-                </p>
-                <p className="text-xs text-slate-400 truncate">
-                  {user?.role === 'faculty' ? 'Faculty / Instructor' : 'Administrator / Academic Admin'}
-                </p>
+                    : (user?.username === 'admin' || user?.role === 'admin' ? 'Hemansh Verma' : user?.username)}
+                </span>
+                <span className="text-[9px] text-slate-450 uppercase font-semibold tracking-wider mt-0.5">
+                  {user?.role === 'admin' ? 'Administrator' : (user?.role === 'faculty' ? 'Faculty' : 'Student')}
+                </span>
               </div>
-            </div>
-            
-            <button 
-              onClick={handleLogout}
-              className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-slate-900 border border-slate-800 hover:bg-rose-950/20 hover:border-rose-900/50 text-rose-400 hover:text-rose-300 rounded-lg text-xs font-semibold transition"
-            >
-              <LogOut className="w-3.5 h-3.5" /> Log Out Session
-            </button>
-          </div>
-        </aside>
-      )}
-
-      {/* -------------------- MAIN APP WORKSPACE -------------------- */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        
-        {/* Top Navbar */}
-        <header className="h-16 bg-slate-950/80 backdrop-blur border-b border-slate-800 px-6 flex items-center justify-between z-10 print:hidden">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 md:hidden">
-              <BrainCircuit className="w-6 h-6 text-blue-500" />
-              <span className="font-bold text-sm text-white">EduFeedback AI</span>
-            </div>
-            <h2 className="text-base md:text-lg font-semibold text-white hidden sm:block">
-              {currentView === 'student' && "Student Feedback Submission"}
-              {currentView === 'login' && "Faculty Portal Authentication"}
-              {currentView === 'dashboard' && "Executive Academic Analytics"}
-              {currentView === 'feedback-list' && "Live Sentiment & Topic Logs"}
-            </h2>
-            
-            {token && (
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> ML Pipeline Active
-              </span>
-            )}
-          </div>
-
-          <div className="flex items-center gap-2.5">
-            {/* View selectors when logged in (mobile/fallback tabs) */}
-            {token && (
-              <div className="flex items-center bg-slate-900 border border-slate-800 rounded-lg p-0.5 md:hidden">
-                <button 
-                  onClick={() => setCurrentView('dashboard')}
-                  className={`px-2.5 py-1 text-xs rounded-md ${currentView === 'dashboard' ? 'bg-blue-600 text-white' : 'text-slate-400'}`}
-                >
-                  Dash
-                </button>
-                <button 
-                  onClick={() => setCurrentView('feedback-list')}
-                  className={`px-2.5 py-1 text-xs rounded-md ${currentView === 'feedback-list' ? 'bg-blue-600 text-white' : 'text-slate-400'}`}
-                >
-                  List
-                </button>
-              </div>
-            )}
-
-            {/* Quick action buttons */}
-            <button 
-              onClick={toggleTheme} 
-              className="p-2 rounded-lg bg-slate-850 text-slate-400 hover:text-white border border-slate-800 transition"
-              title="Toggle theme"
-            >
-              {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-            </button>
-
-            {currentView === 'student' && !token && (
+              
+              {/* Profile Avatar / Logout dropdown shortcut */}
               <button 
-                onClick={() => setCurrentView('login')}
-                className="flex items-center gap-1.5 bg-slate-800 border border-slate-700 text-slate-200 hover:text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition"
+                onClick={handleLogout}
+                className="w-9 h-9 rounded-full bg-white/10 border border-white/5 flex items-center justify-center font-bold text-blue-455 hover:bg-rose-950/20 hover:text-rose-455 transition cursor-pointer"
+                title="Log Out Session"
               >
-                <LogIn className="w-3.5 h-3.5" /> Faculty Login
+                <LogOut className="w-4 h-4" />
               </button>
-            )}
+            </div>
 
-            {currentView === 'student' && token && (
-              <>
-                <button 
-                  onClick={() => setCurrentView('dashboard')}
-                  className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition shadow-lg shadow-blue-600/10"
-                >
-                  <LayoutDashboard className="w-3.5 h-3.5" /> Go to Dashboard
-                </button>
-                <button 
-                  onClick={handleLogout}
-                  className="flex items-center gap-1.5 bg-slate-800 border border-slate-700 text-rose-450 hover:bg-slate-750 px-3 py-1.5 rounded-lg text-xs font-semibold transition"
-                >
-                  <LogOut className="w-3.5 h-3.5" /> Logout
-                </button>
-              </>
-            )}
-
-            {token && (
-              <button 
-                onClick={handleResetData}
-                className="p-2 rounded-lg bg-slate-850 text-slate-400 hover:text-white border border-slate-800 transition"
-                title="Seed / Reset Mock Data"
-              >
-                <RefreshCw className="w-4 h-4" />
-              </button>
-            )}
-
-            {token && (currentView === 'dashboard' || currentView === 'feedback-list') && (
-              <>
-                <button 
-                  onClick={handleExportPDF}
-                  className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white px-3.5 py-1.5 rounded-lg text-xs font-semibold transition shadow-lg shadow-blue-600/10"
-                >
-                  <Download className="w-3.5 h-3.5" /> Export PDF Report
-                </button>
-                
-                <button 
-                  onClick={handleLogout}
-                  className="p-2 rounded-lg bg-slate-850 hover:bg-rose-950/20 text-rose-400 hover:text-rose-300 border border-slate-800 transition md:hidden"
-                  title="Logout"
-                >
-                  <LogOut className="w-4 h-4" />
-                </button>
-              </>
-            )}
           </div>
         </header>
+      )}
 
-        {/* Scrollable Main Area */}
-        <main className="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-6 space-y-6">
-          
+      {/* Main Container Area */}
+      <main className="flex-1 max-w-6xl w-full mx-auto px-4 py-6 relative z-10 custom-scrollbar overflow-y-auto space-y-6">
+
+          {/* ========================================================================= */}
+          {/* ========================== 1.5 STUDENT DASHBOARD ========================= */}
+          {/* ========================================================================= */}
+          {token && currentView === 'student-dashboard' && (
+            <div className="space-y-6 max-w-6xl mx-auto py-6 animate-fade-in-up">
+              {/* Welcome Banner */}
+              <div className="glass-panel p-6 relative overflow-hidden">
+                <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-blue-655 via-violet-500 to-cyan-500"></div>
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative z-10">
+                  <div>
+                    <span className="text-[10px] font-bold text-blue-500 uppercase tracking-widest block">Student Console</span>
+                    <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white mt-1">Welcome back, {user?.full_name || 'Student'}!</h2>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                      Roll Number: <span className="font-semibold text-slate-700 dark:text-slate-200">{user?.roll_number}</span> | Department: <span className="font-semibold text-slate-700 dark:text-slate-200">{user?.department}</span>
+                    </p>
+                  </div>
+                  <button 
+                    onClick={() => {
+                      setStudentForm(prev => ({
+                        ...prev,
+                        subject_id: '',
+                        teacher_id: '',
+                        semester: 'Semester 1'
+                      }));
+                      setFormStep(0);
+                      setCurrentView('student');
+                    }}
+                    className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition hover-glow-blue cursor-pointer"
+                  >
+                    <FileText className="w-4 h-4" /> Share New Feedback
+                  </button>
+                </div>
+              </div>
+
+              {/* Statistics Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {/* Metric 1: Total Feedbacks */}
+                <div className="glass-panel p-6 flex items-center justify-between">
+                  <div>
+                    <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 block uppercase">Evaluations Completed</span>
+                    <h3 className="text-3xl font-extrabold text-slate-900 dark:text-white mt-2">{(feedbacks || []).length}</h3>
+                  </div>
+                  <div className="w-12 h-12 bg-blue-500/10 text-blue-500 rounded-xl flex items-center justify-center border border-blue-500/20">
+                    <CheckCircle className="w-6 h-6" />
+                  </div>
+                </div>
+
+                {/* Metric 2: Average Rating Given */}
+                <div className="glass-panel p-6 flex items-center justify-between">
+                  <div>
+                    <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 block uppercase">Average Rating Given</span>
+                    <h3 className="text-3xl font-extrabold text-slate-900 dark:text-white mt-2 flex items-center gap-1.5">
+                      {(feedbacks || []).length > 0 
+                        ? ((feedbacks || []).reduce((acc, f) => acc + f.rating, 0) / (feedbacks || []).length).toFixed(1) 
+                        : '0.0'}
+                      <span className="text-sm font-normal text-slate-400">/ 5.0</span>
+                    </h3>
+                  </div>
+                  <div className="w-12 h-12 bg-amber-500/10 text-amber-500 rounded-xl flex items-center justify-center border border-amber-500/20">
+                    <Star className="w-6 h-6 fill-amber-500" />
+                  </div>
+                </div>
+
+                {/* Metric 3: Sentiment Summary */}
+                <div className="glass-panel p-6 flex items-center justify-between sm:col-span-2 lg:col-span-1">
+                  <div>
+                    <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 block uppercase">Sentiment Breakdown</span>
+                    <div className="flex gap-4 mt-2">
+                      <div className="text-center">
+                        <span className="text-xs text-slate-400 block">Pos</span>
+                        <span className="text-sm font-bold text-emerald-500">{(feedbacks || []).filter(f => f.sentiment === 'Positive').length}</span>
+                      </div>
+                      <div className="text-center">
+                        <span className="text-xs text-slate-400 block">Neu</span>
+                        <span className="text-sm font-bold text-blue-405">{(feedbacks || []).filter(f => f.sentiment === 'Neutral').length}</span>
+                      </div>
+                      <div className="text-center">
+                        <span className="text-xs text-slate-400 block">Neg</span>
+                        <span className="text-sm font-bold text-rose-500">{(feedbacks || []).filter(f => f.sentiment === 'Negative').length}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="w-12 h-12 bg-violet-500/10 text-violet-500 rounded-xl flex items-center justify-center border border-violet-500/20">
+                    <Activity className="w-6 h-6" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Main Content Layout */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
+                {/* Left Side: Submitted Feedbacks */}
+                <div className="lg:col-span-2 space-y-6">
+                  <div className="glass-panel p-6">
+                    <h3 className="text-base font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+                      <MessageSquare className="w-4 h-4 text-blue-500" /> Your Submitted Reviews
+                    </h3>
+
+                    {(feedbacks || []).length === 0 ? (
+                      <div className="text-center py-12 text-slate-500 dark:text-slate-400">
+                        <p className="text-sm">You haven't submitted any feedback evaluations yet.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {(feedbacks || []).map((fb) => (
+                          <div key={fb.id} className="p-4 bg-white/5 border border-white/8 rounded-2xl flex flex-col sm:flex-row justify-between items-start gap-4 hover:bg-white/10 hover:border-white/15 transition-all duration-300">
+                            <div className="space-y-1 flex-1">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="text-[10px] font-bold text-blue-450 bg-blue-500/10 px-2.5 py-0.5 rounded-full border border-blue-500/20">
+                                  {fb.subject?.code || 'SUB'}
+                                </span>
+                                <h4 className="text-sm font-bold text-white">
+                                  {fb.subject?.name}
+                                </h4>
+                              </div>
+                              <p className="text-xs text-slate-400">
+                                Evaluated: <span className="font-semibold text-slate-600 dark:text-slate-300">{fb.teacher?.name}</span> ({fb.semester})
+                              </p>
+                              <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 line-clamp-2 italic">
+                                "{fb.text}"
+                              </p>
+                            </div>
+                            <div className="flex sm:flex-col items-end gap-2 shrink-0">
+                              {/* Rating Stars */}
+                              <div className="flex gap-0.5 text-amber-500">
+                                {Array.from({ length: 5 }).map((_, i) => (
+                                  <Star key={i} className={`w-3.5 h-3.5 ${i < fb.rating ? 'fill-amber-500' : 'text-slate-300 dark:text-slate-750'}`} />
+                                ))}
+                              </div>
+                              {/* Sentiment Badge */}
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                                fb.sentiment === 'Positive' 
+                                  ? 'bg-emerald-500/10 text-emerald-450 border-emerald-500/20' 
+                                  : fb.sentiment === 'Negative'
+                                  ? 'bg-rose-500/10 text-rose-450 border-rose-500/20'
+                                  : 'bg-blue-500/10 text-blue-450 border-blue-500/20'
+                              }`}>
+                                {fb.sentiment || 'Neutral'}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Right Side: Pending evaluations */}
+                <div className="space-y-6">
+                  <div className="glass-panel p-6">
+                    <h3 className="text-base font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+                      <BookOpen className="w-4 h-4 text-purple-500" /> Pending Evaluations
+                    </h3>
+
+                    {(() => {
+                      const submittedSubjectIds = new Set((feedbacks || []).map(fb => fb.subject_id));
+                      const pending = (subjects || []).filter(sub => !submittedSubjectIds.has(sub.id));
+
+                      if (pending.length === 0) {
+                        return (
+                          <div className="text-center py-8 text-slate-500 dark:text-slate-400">
+                            <span className="text-3xl block mb-2">🎉</span>
+                            <p className="text-xs font-bold text-slate-900 dark:text-white">All Clear!</p>
+                            <p className="text-[10px] mt-1">You have submitted feedback for all university subjects.</p>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div className="space-y-3">
+                          {pending.map((sub) => (
+                            <div key={sub.id} className="p-3.5 bg-white/5 border border-white/8 rounded-2xl space-y-3 flex flex-col justify-between hover:bg-white/10 hover:border-white/15 transition-all duration-300">
+                              <div>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-[10px] font-bold text-purple-400 bg-purple-500/10 px-2.5 py-0.5 rounded-full border border-purple-500/20">
+                                      {sub.code}
+                                    </span>
+                                    <span className="text-[10px] text-slate-400">{sub.semester}</span>
+                                  </div>
+                                  <h4 className="text-xs font-bold text-white mt-1.5 leading-tight">
+                                    {sub.name}
+                                  </h4>
+                                </div>
+                                <button
+                                  onClick={() => startFeedbackForSubject(sub)}
+                                  className="w-full bg-white/10 hover:bg-purple-600 text-slate-200 hover:text-white border border-white/10 py-1.5 rounded-xl text-[10px] font-bold transition flex items-center justify-center gap-1 cursor-pointer"
+                                >
+                                  Evaluate Subject <ArrowRight className="w-3 h-3" />
+                                </button>
+                              </div>
+                            ))}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          )}
+
           {/* ========================================================================= */}
           {/* ========================== 1. STUDENT FEEDBACK FORM ====================== */}
           {/* ========================================================================= */}
@@ -996,9 +1258,9 @@ function App() {
                       </div>
                     )}
 
-                    {/* STEPS 1-7: Questionnaire Sections */}
-                    {formStep >= 1 && formStep <= 7 && (() => {
-                      const section = SECTIONS[formStep - 1];
+                    {/* STEPS 1-X: Questionnaire Sections */}
+                    {formStep >= 1 && formStep <= feedbackSections.length && (() => {
+                      const section = feedbackSections[formStep - 1];
                       const comment = studentForm.section_texts[section.title] || '';
                       
                       return (
@@ -1015,17 +1277,17 @@ function App() {
                             {section.questions.map(q => {
                               const curRating = studentForm.section_ratings[section.title]?.[q.key] || 5;
                               return (
-                                <div key={q.key} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-slate-900/40 border border-slate-850 rounded-xl">
-                                  <span className="text-xs text-slate-205">{q.label}</span>
+                                <div key={q.key} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-white/5 border border-white/8 rounded-2xl">
+                                  <span className="text-xs text-slate-200">{q.label}</span>
                                   <div className="flex items-center gap-1">
                                     {[1, 2, 3, 4, 5].map(star => (
                                       <button
                                         key={star}
                                         type="button"
                                         onClick={() => handleRatingChange(section.title, q.key, star)}
-                                        className="text-slate-700 hover:scale-110 transition"
+                                        className="text-slate-600 hover:scale-110 transition"
                                       >
-                                        <Star className={`w-5 h-5 ${star <= curRating ? 'fill-amber-400 text-amber-400' : 'text-slate-700'}`} />
+                                        <Star className={`w-5 h-5 ${star <= curRating ? 'fill-amber-400 text-amber-400' : 'text-slate-600'}`} />
                                       </button>
                                     ))}
                                   </div>
@@ -1043,7 +1305,7 @@ function App() {
                               value={comment}
                               onChange={(e) => handleTextChange(section.title, e.target.value)}
                               placeholder={`What did you observe or like/dislike regarding ${section.title.toLowerCase()}?`}
-                              className="w-full bg-slate-900 border border-slate-800 rounded-xl p-4 text-sm text-slate-200 focus:outline-none focus:border-blue-500 h-24 resize-none"
+                              className="w-full glass-input p-4 text-sm text-white focus:ring-1 focus:ring-blue-500/20 h-24 resize-none"
                               required={section.title === "Overall Satisfaction"}
                             />
                             <div className="flex justify-between items-center mt-1">
@@ -1070,7 +1332,7 @@ function App() {
                             <button
                               type="button"
                               onClick={() => { setFeedbackError(''); setFormStep(formStep - 1); }}
-                              className="flex-1 bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-300 font-semibold py-2.5 rounded-xl transition text-xs"
+                              className="flex-1 bg-white/10 hover:bg-white/15 border border-white/10 text-slate-200 font-bold py-2.5 rounded-xl transition text-xs cursor-pointer"
                             >
                               Back
                             </button>
@@ -1094,8 +1356,8 @@ function App() {
                       );
                     })()}
 
-                    {/* STEP 8: Review & Submit */}
-                    {formStep === 8 && (
+                    {/* Review & Submit Final Step */}
+                    {formStep === feedbackSections.length + 1 && (
                       <div className="space-y-6">
                         <div className="border-b border-slate-900 pb-3">
                           <h4 className="text-base font-bold text-white">3. Review and Submit Feedback</h4>
@@ -1104,21 +1366,21 @@ function App() {
 
                         {/* Review cards */}
                         <div className="space-y-3 max-h-72 overflow-y-auto pr-1 custom-scrollbar">
-                          {SECTIONS.map((sec) => {
+                          {feedbackSections.map((sec) => {
                             const q_ratings = studentForm.section_ratings[sec.title] || {};
                             const allVals = Object.values(q_ratings);
                             const avgVal = allVals.length > 0 ? (allVals.reduce((a, b) => a + b, 0) / allVals.length).toFixed(1) : "5.0";
                             const comment = studentForm.section_texts[sec.title] || '';
                             
                             return (
-                              <div key={sec.title} className="p-3 bg-slate-900/60 border border-slate-850 rounded-xl space-y-1 text-xs">
-                                <div className="flex justify-between items-center border-b border-slate-850 pb-1.5">
+                              <div key={sec.title} className="p-3 bg-white/5 border border-white/8 rounded-2xl space-y-1 text-xs">
+                                <div className="flex justify-between items-center border-b border-white/5 pb-1.5">
                                   <span className="font-semibold text-slate-200">{sec.title}</span>
                                   <span className="text-amber-400 font-bold flex items-center gap-1">
                                     ★ {avgVal}
                                   </span>
                                 </div>
-                                <p className="text-slate-400 italic mt-1 font-medium">"{comment}"</p>
+                                <p className="text-slate-450 italic mt-1 font-medium">"{comment || 'No comments registered.'}"</p>
                               </div>
                             );
                           })}
@@ -1134,15 +1396,15 @@ function App() {
                         <div className="flex gap-4 pt-2 border-t border-slate-900">
                           <button
                             type="button"
-                            onClick={() => { setFeedbackError(''); setFormStep(7); }}
-                            className="flex-1 bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-300 font-semibold py-3 rounded-xl transition text-xs"
+                            onClick={() => { setFeedbackError(''); setFormStep(feedbackSections.length); }}
+                            className="flex-1 bg-white/10 hover:bg-white/15 border border-white/10 text-slate-200 font-bold py-3 rounded-xl transition text-xs cursor-pointer"
                           >
                             Back to Edit
                           </button>
                           <button
                             type="submit"
                             disabled={submittingFeedback}
-                            className="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl transition text-xs flex items-center justify-center gap-1.5"
+                            className="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl transition text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-lg shadow-blue-600/10"
                           >
                             Submit Feedback to AI <CheckCircle className="w-4 h-4" />
                           </button>
@@ -1152,13 +1414,13 @@ function App() {
 
                     {/* Visual pipeline loader */}
                     {submittingFeedback && (
-                      <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3 animate-pulse">
+                      <div className="glass-panel p-4 space-y-3 animate-pulse">
                         <div className="flex justify-between items-center">
                           <span className="text-xs font-bold text-blue-400 uppercase tracking-wider">AI Processing Active</span>
                           <span className="text-[10px] text-slate-500">Stage {pipelineStage + 1} of {pipelineStages.length}</span>
                         </div>
                         <p className="text-xs text-slate-350 font-semibold">{pipelineStages[pipelineStage]}</p>
-                        <div className="w-full bg-slate-850 rounded-full h-1.5 overflow-hidden">
+                        <div className="w-full bg-white/10 rounded-full h-1.5 overflow-hidden">
                           <div 
                             className="bg-blue-500 h-full transition-all duration-300" 
                             style={{ width: `${((pipelineStage + 1) / pipelineStages.length) * 100}%` }}
@@ -1174,7 +1436,7 @@ function App() {
                         <button
                           type="button"
                           onClick={handleSeedData}
-                          className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 rounded-xl text-xs font-bold transition flex items-center gap-1.5 mx-auto"
+                          className="px-4 py-2 bg-white/10 hover:bg-white/15 text-slate-200 hover:text-white border border-white/10 rounded-xl text-xs font-bold transition flex items-center gap-1.5 mx-auto cursor-pointer"
                         >
                           <RefreshCw className="w-3.5 h-3.5" /> Initial Database Setup (Seed Data)
                         </button>
@@ -1190,60 +1452,89 @@ function App() {
 
           {/* ========================================================================= */}
           {/* ============================= 2. FACULTY PORTAL LOGIN ==================== */}
+          {/* ================================================================          {/* ========================================================================= */}
+          {/* ============================= 2. AUTHENTICATION PORTALS ==================== */}
           {/* ========================================================================= */}
-          {currentView === 'login' && (
-            <div className="max-w-md mx-auto py-12">
-              {/* Main Auth Panel using Glassmorphism */}
-              <div className="glass-panel p-6 md:p-8 relative">
-                <div className={`absolute top-0 inset-x-0 h-1 rounded-t-2xl transition-all duration-300 ${
-                  loginRole === 'student' ? 'bg-blue-600' : 'bg-purple-600'
-                }`}></div>
-                
-                {/* Role Switcher Tab bar */}
-                <div className="flex border border-slate-200/40 dark:border-slate-800/40 mb-6 p-0.5 bg-slate-100/50 dark:bg-slate-950/30 rounded-xl">
-                  <button
-                    type="button"
-                    onClick={() => { setLoginRole('student'); setLoginError(''); setIsSignUp(false); }}
-                    className={`flex-1 text-center py-2 text-xs font-bold rounded-lg transition-all duration-200 ${
-                      loginRole === 'student'
-                        ? 'bg-blue-600 text-white shadow-md'
-                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-                    }`}
-                  >
-                    Student Portal
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setLoginRole('faculty'); setLoginError(''); setIsSignUp(false); }}
-                    className={`flex-1 text-center py-2 text-xs font-bold rounded-lg transition-all duration-200 ${
-                      loginRole === 'faculty'
-                        ? 'bg-purple-600 text-white shadow-md'
-                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-                    }`}
-                  >
-                    Faculty / Staff
-                  </button>
-                </div>
+          {(currentView === 'login' || currentView === 'admin-login') && (
+            <div className="relative min-h-[75vh] flex items-center justify-center py-10 px-4 overflow-hidden">
+              {/* Floating Animated Gradient Blobs */}
+              <div className="absolute top-10 left-10 w-64 h-64 bg-blue-500/20 dark:bg-blue-500/10 rounded-full blur-3xl animate-blob-1 pointer-events-none"></div>
+              <div className="absolute bottom-10 right-10 w-72 h-72 bg-purple-500/20 dark:bg-purple-500/10 rounded-full blur-3xl animate-blob-2 pointer-events-none"></div>
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-pink-500/10 dark:bg-pink-500/5 rounded-full blur-3xl animate-blob-3 pointer-events-none"></div>
 
-                <div className="text-center mb-6">
-                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-3 border transition-all ${
-                    loginRole === 'student' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' : 'bg-purple-500/10 text-purple-400 border-purple-500/20'
-                  }`}>
-                    <LogIn className="w-5 h-5" />
+              {/* Glassmorphic Login Card */}
+              <div className="glass-panel max-w-md w-full p-6 md:p-8 relative z-10 shadow-2xl border border-slate-200/55 dark:border-slate-800/80 animate-fade-in-up">
+                
+                {/* Visual indicator bar */}
+                <div className={`absolute top-0 inset-x-0 h-1.5 rounded-t-2xl transition-all duration-500 ${
+                  currentView === 'admin-login' 
+                    ? 'bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500' 
+                    : (loginRole === 'student' ? 'bg-blue-650' : 'bg-purple-650')
+                }`}></div>
+
+                {currentView === 'login' ? (
+                  <>
+                    {/* Role Switcher Tab bar with smooth sliding highlight */}
+                    <div className="flex border border-slate-200/40 dark:border-slate-800/40 mb-6 p-0.5 bg-slate-100/50 dark:bg-slate-950/30 rounded-xl relative overflow-hidden">
+                      <div 
+                        className="absolute top-0.5 bottom-0.5 rounded-lg transition-all duration-300 bg-blue-650 shadow-md shadow-blue-500/20"
+                        style={{
+                          left: loginRole === 'student' ? '2px' : 'calc(50% + 2px)',
+                          width: 'calc(50% - 4px)',
+                          backgroundColor: loginRole === 'student' ? '#2563eb' : '#9333ea'
+                        }}
+                      ></div>
+                      <button
+                        type="button"
+                        onClick={() => { setLoginRole('student'); setLoginError(''); setIsSignUp(false); }}
+                        className={`flex-1 text-center py-2.5 text-xs font-bold rounded-lg relative z-10 transition-colors duration-300 ${
+                          loginRole === 'student' ? 'text-white' : 'text-slate-500 dark:text-slate-400 hover:text-slate-250'
+                        }`}
+                      >
+                        Student Portal
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setLoginRole('faculty'); setLoginError(''); setIsSignUp(false); }}
+                        className={`flex-1 text-center py-2.5 text-xs font-bold rounded-lg relative z-10 transition-colors duration-300 ${
+                          loginRole === 'faculty' ? 'text-white' : 'text-slate-500 dark:text-slate-400 hover:text-slate-250'
+                        }`}
+                      >
+                        Faculty / Staff
+                      </button>
+                    </div>
+
+                    <div className="text-center mb-6">
+                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-3 border transition-all duration-300 ${
+                        loginRole === 'student' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' : 'bg-purple-500/10 text-purple-400 border-purple-500/20'
+                      }`}>
+                        <LogIn className="w-5 h-5" />
+                      </div>
+                      <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                        {isSignUp 
+                          ? (loginRole === 'student' ? 'Student Registration' : 'Faculty Sign Up')
+                          : (loginRole === 'student' ? 'Student Feedback Portal' : 'Faculty Analytics Portal')}
+                      </h3>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                        {isSignUp
+                          ? 'Create your university database profile to register credentials.'
+                          : (loginRole === 'student'
+                              ? 'Access evaluation forms, view semesters, and record subject ratings.'
+                              : 'Review consolidated ratings, AI sentiment timelines, and recommendations.')}
+                      </p>
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-center mb-6">
+                    <div className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-3 border bg-pink-500/10 text-pink-500 border-pink-500/25">
+                      <BrainCircuit className="w-5 h-5" />
+                    </div>
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white">Academic Admin Console</h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                      Authenticate administrative credentials to oversee feedback flows and user status.
+                    </p>
                   </div>
-                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">
-                    {isSignUp 
-                      ? (loginRole === 'student' ? 'Student Registration' : 'Faculty Sign Up')
-                      : (loginRole === 'student' ? 'Student Feedback Portal' : 'Faculty Analytics Portal')}
-                  </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
-                    {isSignUp
-                      ? 'Create your university database profile to register credentials.'
-                      : (loginRole === 'student'
-                          ? 'Access evaluation forms, view semesters, and record subject ratings.'
-                          : 'Review consolidated ratings, AI sentiment timelines, and recommendations.')}
-                  </p>
-                </div>
+                )}
 
                 {registerSuccess && (
                   <div className="p-3 mb-4 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs rounded-xl flex items-center gap-2">
@@ -1262,7 +1553,7 @@ function App() {
                         value={registerForm.full_name}
                         onChange={(e) => setRegisterForm(prev => ({ ...prev, full_name: e.target.value }))}
                         placeholder="Enter full name (e.g. Hemansh Verma)"
-                        className="w-full glass-input"
+                        className="w-full glass-input focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-slate-900 focus:ring-blue-500"
                         required
                       />
                     </div>
@@ -1276,51 +1567,65 @@ function App() {
                         value={registerForm.email}
                         onChange={(e) => setRegisterForm(prev => ({ ...prev, email: e.target.value }))}
                         placeholder="e.g. student@aktu.edu"
-                        className="w-full glass-input"
+                        className="w-full glass-input focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-slate-900 focus:ring-blue-500"
                         required
                       />
                     </div>
                   )}
 
                   {/* Role Specific Input */}
-                  {loginRole === 'student' ? (
+                  {currentView === 'admin-login' ? (
                     <div>
-                      <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-2">University Roll Number</label>
+                      <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-2">Administrator Email ID</label>
                       <input 
-                        type="text" 
-                        value={isSignUp ? registerForm.roll_number : loginForm.username}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          if (isSignUp) {
-                            setRegisterForm(prev => ({ ...prev, roll_number: val }));
-                          } else {
-                            setLoginForm(prev => ({ ...prev, username: val }));
-                          }
-                        }}
-                        placeholder="Enter 13-digit Roll Number"
-                        className="w-full glass-input"
+                        type="email" 
+                        value={loginForm.username}
+                        onChange={(e) => setLoginForm(prev => ({ ...prev, username: e.target.value }))}
+                        placeholder="hemanshv@gmail.com"
+                        className="w-full glass-input focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-slate-900 focus:ring-pink-500"
                         required
                       />
                     </div>
                   ) : (
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-2">Username</label>
-                      <input 
-                        type="text" 
-                        value={isSignUp ? registerForm.username : loginForm.username}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          if (isSignUp) {
-                            setRegisterForm(prev => ({ ...prev, username: val }));
-                          } else {
-                            setLoginForm(prev => ({ ...prev, username: val }));
-                          }
-                        }}
-                        placeholder="Enter username"
-                        className="w-full glass-input"
-                        required
-                      />
-                    </div>
+                    loginRole === 'student' ? (
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-2">University Roll Number</label>
+                        <input 
+                          type="text" 
+                          value={isSignUp ? registerForm.roll_number : loginForm.username}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (isSignUp) {
+                              setRegisterForm(prev => ({ ...prev, roll_number: val }));
+                            } else {
+                              setLoginForm(prev => ({ ...prev, username: val }));
+                            }
+                          }}
+                          placeholder="Enter 13-digit Roll Number"
+                          className="w-full glass-input focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-slate-900 focus:ring-blue-500"
+                          required
+                        />
+                      </div>
+                    ) : (
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-2">Username</label>
+                        <input 
+                          type="text" 
+                          value={isSignUp ? registerForm.username : loginForm.username}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (isSignUp) {
+                              setRegisterForm(prev => ({ ...prev, username: val }));
+                            } else {
+                              setLoginForm(prev => ({ ...prev, username: val }));
+                            }
+                          }}
+                          placeholder="Enter username"
+                          className="w-full glass-input focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-slate-900 focus:ring-purple-500"
+                          required
+                        />
+                      </div>
+                    )
                   )}
 
                   {isSignUp && (
@@ -1355,7 +1660,9 @@ function App() {
                         }
                       }}
                       placeholder="Enter password"
-                      className="w-full glass-input"
+                      className={`w-full glass-input focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-slate-900 ${
+                        currentView === 'admin-login' ? 'focus:ring-pink-500' : (loginRole === 'student' ? 'focus:ring-blue-500' : 'focus:ring-purple-500')
+                      }`}
                       required
                     />
                   </div>
@@ -1369,23 +1676,44 @@ function App() {
 
                   <button
                     type="submit"
-                    className={`w-full text-white font-bold py-2.5 rounded-xl transition text-sm shadow-lg ${
-                      loginRole === 'student' 
-                        ? 'bg-blue-600 hover:bg-blue-500 shadow-blue-500/15' 
-                        : 'bg-purple-600 hover:bg-purple-500 shadow-purple-500/15'
+                    className={`w-full text-white font-bold py-3 rounded-xl transition-all duration-300 text-sm shadow-lg ${
+                      currentView === 'admin-login'
+                        ? 'bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 shadow-pink-500/20 hover-glow-purple cursor-pointer'
+                        : (loginRole === 'student' 
+                            ? 'bg-blue-600 hover:bg-blue-500 shadow-blue-500/15 hover-glow-blue cursor-pointer' 
+                            : 'bg-purple-600 hover:bg-purple-500 shadow-purple-500/15 hover-glow-purple cursor-pointer')
                     }`}
                   >
                     {isSignUp ? 'Create Account' : 'Authenticate Account'}
                   </button>
 
-                  <div className="text-center pt-2">
-                    <button
-                      type="button"
-                      onClick={() => { setIsSignUp(!isSignUp); setLoginError(''); }}
-                      className="text-xs text-blue-500 hover:text-blue-400 font-semibold transition"
-                    >
-                      {isSignUp ? 'Already have an account? Sign In' : "Don't have an account? Sign Up"}
-                    </button>
+                  <div className="text-center pt-2 flex flex-col gap-2">
+                    {currentView === 'login' ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => { setIsSignUp(!isSignUp); setLoginError(''); }}
+                          className="text-xs text-blue-500 hover:text-blue-400 font-semibold transition cursor-pointer"
+                        >
+                          {isSignUp ? 'Already have an account? Sign In' : "Don't have an account? Sign Up"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { navigateTo('admin-login'); setLoginError(''); setIsSignUp(false); setLoginForm({ username: '', password: '' }); }}
+                          className="text-xs text-slate-400 hover:text-slate-350 transition font-medium underline mt-2 cursor-pointer"
+                        >
+                          Access Academic Admin Portal
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => { navigateTo('login'); setLoginError(''); setLoginForm({ username: '', password: '' }); }}
+                        className="text-xs text-blue-500 hover:text-blue-400 font-semibold transition underline cursor-pointer"
+                      >
+                        Back to Student & Faculty Portal
+                      </button>
+                    )}
                   </div>
                 </form>
               </div>
@@ -1399,7 +1727,7 @@ function App() {
             <div className="space-y-6">
               
               {/* FILTER BAR SECTION */}
-              <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 print:hidden">
+              <div className="glass-panel p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 print:hidden">
                 <div className="flex items-center gap-2">
                   <Filter className="w-4 h-4 text-blue-500" />
                   <span className="text-sm font-semibold text-slate-200">Filter Analytics:</span>
@@ -1410,7 +1738,7 @@ function App() {
                   <select 
                     value={filters.subject_id}
                     onChange={(e) => setFilters(prev => ({ ...prev, subject_id: e.target.value }))}
-                    className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-350 focus:outline-none focus:border-blue-500"
+                    className="glass-input py-1.5 px-3 text-xs focus:ring-1 focus:ring-blue-500/20"
                   >
                     <option value="">All Subjects</option>
                     {subjects.map(s => (
@@ -1423,7 +1751,7 @@ function App() {
                     <select 
                       value={filters.teacher_id}
                       onChange={(e) => setFilters(prev => ({ ...prev, teacher_id: e.target.value }))}
-                      className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-350 focus:outline-none focus:border-blue-500"
+                      className="glass-input py-1.5 px-3 text-xs focus:ring-1 focus:ring-blue-500/20"
                     >
                       <option value="">All Teachers</option>
                       {teachers.map(t => (
@@ -1436,7 +1764,7 @@ function App() {
                   <select 
                     value={filters.semester}
                     onChange={(e) => setFilters(prev => ({ ...prev, semester: e.target.value }))}
-                    className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-350 focus:outline-none focus:border-blue-500"
+                    className="glass-input py-1.5 px-3 text-xs focus:ring-1 focus:ring-blue-500/20"
                   >
                     <option value="">All Semesters</option>
                     {Array.from({ length: 8 }).map((_, idx) => (
@@ -1448,7 +1776,7 @@ function App() {
                 {/* Reset filters button */}
                 <button
                   onClick={() => setFilters({ subject_id: '', teacher_id: '', semester: '' })}
-                  className="px-3 py-1.5 bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-400 hover:text-white rounded-lg text-xs font-semibold transition"
+                  className="px-4 py-2 bg-white/10 hover:bg-white/15 border border-white/10 text-slate-200 hover:text-white rounded-xl text-xs font-bold transition duration-200 cursor-pointer"
                 >
                   Clear Filters
                 </button>
@@ -1460,7 +1788,7 @@ function App() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     
                     {/* Card 1: Total Feedback */}
-                    <div className="bg-slate-800/60 border border-slate-700/60 rounded-xl p-5 flex flex-col justify-between">
+                    <div className="glass-panel p-5 flex flex-col justify-between">
                       <div className="flex justify-between items-start">
                         <div>
                           <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Total Submissions</p>
@@ -1476,7 +1804,7 @@ function App() {
                     </div>
 
                     {/* Card 2: Average Rating */}
-                    <div className="bg-slate-800/60 border border-slate-700/60 rounded-xl p-5 flex flex-col justify-between">
+                    <div className="glass-panel p-5 flex flex-col justify-between">
                       <div className="flex justify-between items-start">
                         <div>
                           <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Average Rating</p>
@@ -1505,7 +1833,7 @@ function App() {
                     </div>
 
                     {/* Card 3: Sentiment Breakdown */}
-                    <div className="bg-slate-800/60 border border-slate-700/60 rounded-xl p-5 flex flex-col justify-between">
+                    <div className="glass-panel p-5 flex flex-col justify-between">
                       <div className="flex justify-between items-start">
                         {(() => {
                           const total = dashboardData.total_feedback;
@@ -1543,7 +1871,7 @@ function App() {
                     </div>
 
                     {/* Card 4: Actionable recommendations count */}
-                    <div className="bg-slate-800/60 border border-slate-700/60 rounded-xl p-5 flex flex-col justify-between">
+                    <div className="glass-panel p-5 flex flex-col justify-between">
                       <div className="flex justify-between items-start">
                         <div>
                           <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Critical Alerts</p>
@@ -1568,7 +1896,7 @@ function App() {
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     
                     {/* Top Issue Categories Bar Chart */}
-                    <div className="bg-slate-800/60 border border-slate-700/60 rounded-xl p-5 flex flex-col">
+                    <div className="glass-panel p-5 flex flex-col">
                       <div className="flex justify-between items-center mb-4">
                         <h3 className="font-semibold text-slate-200 text-sm flex items-center gap-2">
                           <BookOpen className="w-4 h-4 text-blue-400" /> Key Topic Mentions
@@ -1583,7 +1911,7 @@ function App() {
                               <XAxis type="number" stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} />
                               <YAxis dataKey="category" type="category" stroke="#94a3b8" fontSize={10} width={100} tickLine={false} axisLine={false} />
                               <RechartsTooltip contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155' }} labelStyle={{ color: '#fff' }} />
-                              <Bar dataKey="count" radius={[0, 4, 4, 0]}>
+                              <Bar dataKey="count" radius={[0, 9999, 9999, 0]}>
                                 {dashboardData.category_counts.map((entry, index) => (
                                   <Cell key={`cell-${index}`} fill={BAR_COLORS[index % BAR_COLORS.length]} />
                                 ))}
@@ -1597,7 +1925,7 @@ function App() {
                     </div>
 
                     {/* Sentiment Donut Chart */}
-                    <div className="bg-slate-800/60 border border-slate-700/60 rounded-xl p-5 flex flex-col">
+                    <div className="glass-panel p-5 flex flex-col">
                       <div className="flex justify-between items-center mb-4">
                         <h3 className="font-semibold text-slate-200 text-sm flex items-center gap-2">
                           <Activity className="w-4 h-4 text-purple-400" /> Sentiment Distribution
@@ -1637,7 +1965,7 @@ function App() {
                     </div>
 
                     {/* Alerts / Escalated Issues */}
-                    <div className="bg-slate-800/60 border border-slate-700/60 rounded-xl p-5 flex flex-col justify-between">
+                    <div className="glass-panel p-5 flex flex-col justify-between">
                       <div>
                         <h3 className="font-semibold text-slate-200 text-sm flex items-center gap-2 mb-3">
                           <AlertTriangle className="w-4 h-4 text-rose-500" /> Escalated Warnings
@@ -1679,18 +2007,18 @@ function App() {
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     
                     {/* Word Tag Cloud */}
-                    <div className="lg:col-span-1 bg-slate-800/60 border border-slate-700/60 rounded-xl p-5 flex flex-col">
+                    <div className="lg:col-span-1 glass-panel p-5 flex flex-col">
                       <h3 className="font-semibold text-slate-200 text-sm flex items-center gap-2 mb-3">
                         <Sparkles className="w-4 h-4 text-cyan-400" /> Word Frequency Tags
                       </h3>
                       
-                      <div className="flex flex-wrap gap-2 items-center justify-center p-4 border border-slate-800 rounded-lg bg-slate-900/50 flex-1">
+                      <div className="flex flex-wrap gap-2 items-center justify-center p-4 border border-white/5 rounded-2xl bg-white/5 flex-1">
                         {dashboardData.keywords.length > 0 ? (
                           dashboardData.keywords.map((kw, i) => {
                             // Calculate font size class based on word frequency
                             const sizeVal = kw.value;
                             let sizeClass = "text-xs px-2 py-1";
-                            let colorClass = "bg-slate-800 text-slate-400";
+                            let colorClass = "bg-white/10 text-slate-305 border border-white/5";
                             
                             if (sizeVal > 4) {
                               sizeClass = "text-base font-bold px-3 py-1.5";
@@ -1710,21 +2038,21 @@ function App() {
                             );
                           })
                         ) : (
-                          <div className="text-xs text-slate-505 text-center">No keywords extracted yet. Add student feedbacks.</div>
+                          <div className="text-xs text-slate-500 text-center">No keywords extracted yet. Add student feedbacks.</div>
                         )}
                       </div>
                     </div>
 
                     {/* AI Recommendations */}
-                    <div className="lg:col-span-2 bg-slate-800/60 border border-slate-700/60 rounded-xl p-5 flex flex-col">
+                    <div className="lg:col-span-2 glass-panel p-5 flex flex-col">
                       <h3 className="font-semibold text-slate-200 text-sm flex items-center gap-2 mb-3">
                         <Bot className="w-4 h-4 text-emerald-400" /> Faculty Corrective Recommendations
                       </h3>
                       
-                      <div className="overflow-x-auto border border-slate-800 rounded-lg bg-slate-900/50 flex-1">
+                      <div className="overflow-x-auto border border-white/5 rounded-2xl bg-white/5 flex-1">
                         <table className="w-full text-left text-xs border-collapse">
                           <thead>
-                            <tr className="border-b border-slate-800 bg-slate-950/50 text-slate-450 font-semibold">
+                            <tr className="border-b border-white/5 bg-white/10 text-slate-200 font-bold">
                               <th className="p-3">Grievance Category</th>
                               <th className="p-3 text-center">Negative Mentions</th>
                               <th className="p-3">Automated AI Action Recommendation</th>
@@ -1757,7 +2085,7 @@ function App() {
                   </div>
 
                   {/* BOTTOM RECENT FEEDBACK ROW */}
-                  <div className="bg-slate-950 border border-slate-800 rounded-xl p-5">
+                  <div className="glass-panel p-5">
                     <div className="flex justify-between items-center mb-4">
                       <h3 className="font-semibold text-slate-200 text-sm flex items-center gap-2">
                         <Clock className="w-4 h-4 text-blue-400" /> Recent Submissions Flow
@@ -1773,7 +2101,7 @@ function App() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {dashboardData.recent_feedbacks.length > 0 ? (
                         dashboardData.recent_feedbacks.slice(0, 4).map(fb => (
-                          <div key={fb.id} className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-2 relative overflow-hidden">
+                          <div key={fb.id} className="bg-white/5 border border-white/8 rounded-2xl p-4 space-y-2 relative overflow-hidden">
                             <div className="flex justify-between items-start gap-2">
                               <span className="text-[10px] text-slate-500">{new Date(fb.timestamp).toLocaleString()}</span>
                               <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
@@ -1819,7 +2147,7 @@ function App() {
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     
                     {/* Chatbot description */}
-                    <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 flex flex-col justify-center">
+                    <div className="glass-panel p-5 flex flex-col justify-center">
                       <div className="flex items-center gap-3 mb-3">
                         <div className="p-3 bg-blue-600 rounded-xl text-white">
                           <Bot className="w-6 h-6" />
@@ -1829,13 +2157,13 @@ function App() {
                           <p className="text-xs text-slate-400">Semantic support bot</p>
                         </div>
                       </div>
-                      <p className="text-xs text-slate-300 leading-relaxed">
+                      <p className="text-xs text-slate-350 leading-relaxed">
                         Query feedback metrics using conversational analytics. The bot reads live SQL database totals, parses negative topics, lists top complaints, and extracts active faculty profiles to help you frame resolutions quickly.
                       </p>
                     </div>
 
                     {/* Chatbot Interface */}
-                    <div className="lg:col-span-2 bg-slate-950 border border-slate-800 rounded-xl p-4 flex flex-col h-[340px]">
+                    <div className="lg:col-span-2 glass-panel p-4 flex flex-col h-[340px]">
                       
                       {/* Chat Messages */}
                       <div className="flex-1 overflow-y-auto custom-scrollbar space-y-3 pr-1 text-xs">
@@ -1845,14 +2173,14 @@ function App() {
                             className={`p-3 rounded-xl max-w-[85%] whitespace-pre-line leading-relaxed ${
                               msg.sender === 'user' 
                                 ? 'bg-blue-600 text-white ml-auto font-medium' 
-                                : 'bg-slate-900 border border-slate-850 text-slate-300'
+                                : 'bg-white/10 border border-white/8 text-slate-200'
                             }`}
                           >
                             {msg.text}
                           </div>
                         ))}
                         {chatbotTyping && (
-                          <div className="bg-slate-900 border border-slate-850 text-slate-400 p-2.5 rounded-xl max-w-[30%] text-[10px] animate-pulse">
+                          <div className="bg-white/5 border border-white/8 text-slate-400 p-2.5 rounded-xl max-w-[30%] text-[10px] animate-pulse">
                             Assistant typing...
                           </div>
                         )}
@@ -1863,42 +2191,42 @@ function App() {
                       <div className="flex gap-2 py-2 overflow-x-auto custom-scrollbar scroll-smooth no-scrollbar text-[10px] select-none print:hidden shrink-0">
                         <button 
                           onClick={() => handlePresetChat("What are the top three issue categories?")}
-                          className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 rounded-lg whitespace-nowrap transition"
+                          className="px-2.5 py-1 bg-white/10 hover:bg-white/15 border border-white/10 text-slate-200 rounded-lg whitespace-nowrap transition cursor-pointer"
                         >
                           Top issue areas
                         </button>
                         <button 
                           onClick={() => handlePresetChat("Summarize overall feedback sentiment.")}
-                          className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 rounded-lg whitespace-nowrap transition"
+                          className="px-2.5 py-1 bg-white/10 hover:bg-white/15 border border-white/10 text-slate-200 rounded-lg whitespace-nowrap transition cursor-pointer"
                         >
                           Overall sentiment summary
                         </button>
                         <button 
                           onClick={() => handlePresetChat("Which instructor has the lowest satisfaction?")}
-                          className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 rounded-lg whitespace-nowrap transition"
+                          className="px-2.5 py-1 bg-white/10 hover:bg-white/15 border border-white/10 text-slate-200 rounded-lg whitespace-nowrap transition cursor-pointer"
                         >
                           Lowest satisfaction profile
                         </button>
                         <button 
                           onClick={() => handlePresetChat("Recommend actions for our negative categories.")}
-                          className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 rounded-lg whitespace-nowrap transition"
+                          className="px-2.5 py-1 bg-white/10 hover:bg-white/15 border border-white/10 text-slate-200 rounded-lg whitespace-nowrap transition cursor-pointer"
                         >
                           Get corrective recommendations
                         </button>
                       </div>
 
                       {/* Input Box */}
-                      <form onSubmit={handleChatSubmit} className="flex gap-2 border-t border-slate-900 pt-3 shrink-0 print:hidden">
+                      <form onSubmit={handleChatSubmit} className="flex gap-2 border-t border-white/5 pt-3 shrink-0 print:hidden">
                         <input 
                           type="text" 
                           value={chatQuery}
                           onChange={(e) => setChatQuery(e.target.value)}
                           placeholder="Type query to scan database..." 
-                          className="flex-1 bg-slate-900 border border-slate-800 rounded-lg px-3.5 py-2 text-xs text-slate-200 focus:outline-none focus:border-blue-500"
+                          className="flex-1 glass-input py-2 px-3.5 text-xs focus:ring-1 focus:ring-blue-500/20"
                         />
                         <button 
                           type="submit"
-                          className="bg-blue-600 hover:bg-blue-505 text-white px-3.5 py-2 rounded-lg text-xs font-bold transition flex items-center justify-center"
+                          className="bg-blue-600 hover:bg-blue-550 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center cursor-pointer shadow-lg shadow-blue-600/10"
                         >
                           <Send className="w-3.5 h-3.5" />
                         </button>
@@ -1910,11 +2238,340 @@ function App() {
 
                 </>
               ) : (
-                <div className="text-center py-20 bg-slate-950 border border-slate-800 rounded-xl space-y-3">
+                <div className="text-center py-20 glass-panel space-y-3">
                   <Activity className="w-12 h-12 text-slate-600 animate-spin mx-auto" />
                   <p className="text-sm text-slate-450">Loading dashboard analytics parameters...</p>
                 </div>
               )}
+
+            </div>
+          )}
+
+          {/* ========================================================================= */}
+          {/* ==================== 3.5 USER MANAGEMENT CONTROL PANEL =================== */}
+          {/* ========================================================================= */}
+          {token && currentView === 'users' && user?.role === 'admin' && (
+            <div className="space-y-6 max-w-6xl mx-auto py-6 animate-fade-in-up">
+              {/* Header card */}
+              <div className="glass-panel p-6 relative overflow-hidden">
+                <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500"></div>
+                <div className="flex justify-between items-center relative z-10">
+                  <div>
+                    <span className="text-[10px] font-bold text-pink-500 uppercase tracking-widest block">System Control</span>
+                    <h2 className="text-xl font-extrabold text-slate-900 dark:text-white mt-1">User Account Directory</h2>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                      Manage academic faculty access permissions, student roll credentials, and system locks.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Filter controls */}
+              <div className="glass-panel p-4 flex flex-col sm:flex-row gap-4 items-center justify-between">
+                {/* Search query */}
+                <div className="w-full sm:max-w-xs relative">
+                  <input
+                    type="text"
+                    placeholder="Search by name, roll, email..."
+                    value={userSearchQuery}
+                    onChange={(e) => setUserSearchQuery(e.target.value)}
+                    className="w-full glass-input pr-10"
+                  />
+                </div>
+
+                {/* Role Filter Selector */}
+                <div className="flex border border-slate-200/40 dark:border-slate-800/40 p-0.5 bg-slate-100/50 dark:bg-slate-950/30 rounded-xl w-full sm:w-auto shrink-0 relative overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => setUserRoleFilter('all')}
+                    className={`px-4 py-2 text-xs font-bold rounded-lg transition-colors duration-200 cursor-pointer ${
+                      userRoleFilter === 'all' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 dark:text-slate-450 hover:text-slate-200'
+                    }`}
+                  >
+                    All Accounts
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setUserRoleFilter('student')}
+                    className={`px-4 py-2 text-xs font-bold rounded-lg transition-colors duration-200 cursor-pointer ${
+                      userRoleFilter === 'student' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 dark:text-slate-450 hover:text-slate-200'
+                    }`}
+                  >
+                    Students
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setUserRoleFilter('faculty')}
+                    className={`px-4 py-2 text-xs font-bold rounded-lg transition-colors duration-200 cursor-pointer ${
+                      userRoleFilter === 'faculty' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 dark:text-slate-405 hover:text-slate-200'
+                    }`}
+                  >
+                    Faculty / Staff
+                  </button>
+                </div>
+              </div>
+
+              {/* Error boundary & Loader inside table */}
+              <div className="glass-panel overflow-hidden">
+                {loadingUsers ? (
+                  <div className="text-center py-20">
+                    <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Loading user catalog...</p>
+                  </div>
+                ) : usersError ? (
+                  <div className="text-center py-20 text-rose-500">
+                    <p className="text-sm font-semibold">{usersError}</p>
+                    <button 
+                      onClick={fetchUsers}
+                      className="mt-4 bg-white/10 hover:bg-white/15 border border-white/10 text-slate-200 hover:text-white px-4 py-2 rounded-xl text-xs transition cursor-pointer"
+                    >
+                      Retry Connection
+                    </button>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto custom-scrollbar">
+                    <table className="w-full border-collapse text-left text-sm text-slate-500 dark:text-slate-400">
+                      <thead className="bg-white/5 text-xs font-bold text-slate-200 uppercase tracking-wider border-b border-white/8">
+                        <tr>
+                          <th className="px-6 py-4">Account Holder</th>
+                          <th className="px-6 py-4">University Roll / ID</th>
+                          <th className="px-6 py-4">Academic Role</th>
+                          <th className="px-6 py-4">Department</th>
+                          <th className="px-6 py-4">Status</th>
+                          <th className="px-6 py-4 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/5">
+                        {(() => {
+                          const filtered = (usersList || []).filter(u => {
+                            // Filter by role
+                            if (userRoleFilter !== 'all' && u.role !== userRoleFilter) return false;
+                            // Filter by search query
+                            if (userSearchQuery.trim()) {
+                              const q = userSearchQuery.toLowerCase();
+                              const nameMatch = u.full_name?.toLowerCase().includes(q);
+                              const rollMatch = u.roll_number?.toLowerCase().includes(q) || u.username?.toLowerCase().includes(q);
+                              const emailMatch = u.email?.toLowerCase().includes(q);
+                              return nameMatch || rollMatch || emailMatch;
+                            }
+                            return true;
+                          });
+
+                          if (filtered.length === 0) {
+                            return (
+                              <tr>
+                                <td colSpan="6" className="px-6 py-12 text-center text-slate-500">
+                                  No accounts found matching the current search parameters.
+                                </td>
+                              </tr>
+                            );
+                          }
+
+                          return filtered.map((u) => (
+                            <tr key={u.id} className="hover:bg-white/5 transition">
+                              <td className="px-6 py-4">
+                                <div className="font-semibold text-slate-900 dark:text-slate-200">{u.full_name || u.username}</div>
+                                <div className="text-xs text-slate-450 dark:text-slate-400 mt-0.5">{u.email}</div>
+                              </td>
+                              <td className="px-6 py-4 font-mono text-xs text-slate-800 dark:text-slate-300">
+                                {u.roll_number || u.username}
+                              </td>
+                              <td className="px-6 py-4">
+                                <span className={`text-[10px] font-bold uppercase px-2.5 py-0.5 rounded-full border ${
+                                  u.role === 'student'
+                                    ? 'bg-blue-500/10 text-blue-450 border-blue-500/20'
+                                    : 'bg-purple-500/10 text-purple-450 border-purple-500/20'
+                                }`}>
+                                  {u.role}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 text-xs font-semibold text-slate-700 dark:text-slate-350">
+                                {u.department || 'N/A'}
+                              </td>
+                              <td className="px-6 py-4">
+                                <span className={`flex items-center gap-1.5 text-xs font-semibold ${
+                                  u.is_blocked ? 'text-rose-500' : 'text-emerald-500'
+                                }`}>
+                                  <span className={`w-1.5 h-1.5 rounded-full ${
+                                    u.is_blocked ? 'bg-rose-500 animate-pulse' : 'bg-emerald-500'
+                                  }`}></span>
+                                  {u.is_blocked ? 'Locked / Blocked' : 'Active / Allowed'}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 text-right">
+                                <button
+                                  onClick={() => handleToggleBlock(u)}
+                                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition duration-200 cursor-pointer ${
+                                    u.is_blocked
+                                      ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 hover:bg-emerald-500 hover:text-white'
+                                      : 'bg-rose-500/10 border border-rose-500/20 text-rose-500 hover:bg-rose-500 hover:text-white'
+                                  }`}
+                                >
+                                  {u.is_blocked ? 'Allow Access' : 'Revoke Access'}
+                                </button>
+                              </td>
+                            </tr>
+                          ));
+                        })()}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ========================================================================= */}
+          {/* ==================== 3.6 DYNAMIC FEEDBACK FORM DESIGNER ================== */}
+          {/* ========================================================================= */}
+          {token && currentView === 'form-designer' && user?.role === 'admin' && (
+            <div className="space-y-6 max-w-6xl mx-auto py-6 animate-fade-in-up">
+              {/* Welcome banner */}
+              <div className="glass-panel p-6 relative overflow-hidden">
+                <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-purple-500 via-pink-500 to-rose-500"></div>
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative z-10">
+                  <div>
+                    <span className="text-[10px] font-bold text-pink-500 uppercase tracking-widest block">System Template Designer</span>
+                    <h2 className="text-xl font-extrabold text-white mt-1">Feedback Questionnaire Architect</h2>
+                    <p className="text-xs text-slate-400 mt-1">
+                      Customize evaluation categories and question fields. Students will see these changes updated in real-time.
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => {
+                        if (window.confirm("Are you sure you want to reset the feedback form to the default AKTU template?")) {
+                          setFeedbackSections(DEFAULT_SECTIONS);
+                          localStorage.setItem('custom_feedback_sections', JSON.stringify(DEFAULT_SECTIONS));
+                          alert("Feedback form template reset to factory default!");
+                        }
+                      }}
+                      className="px-3.5 py-2.5 bg-white/10 hover:bg-white/15 border border-white/10 text-slate-200 hover:text-white rounded-xl text-xs font-bold transition cursor-pointer"
+                    >
+                      Reset to Default
+                    </button>
+                    <button
+                      onClick={() => {
+                        localStorage.setItem('custom_feedback_sections', JSON.stringify(feedbackSections));
+                        // Update ratings default shape inside student form
+                        setStudentForm(prev => ({
+                          ...prev,
+                          section_ratings: initializeRatings(feedbackSections),
+                          section_texts: initializeTexts(feedbackSections)
+                        }));
+                        alert("🎉 Questionnaire template saved and published successfully!");
+                      }}
+                      className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition shadow-lg shadow-blue-600/10 cursor-pointer"
+                    >
+                      Save & Publish Layout
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Designer Board */}
+              <div className="space-y-6">
+                {feedbackSections.map((sec, secIdx) => (
+                  <div key={secIdx} className="glass-panel p-6 space-y-4 relative overflow-hidden">
+                    <div className="absolute left-0 inset-y-0 w-1 bg-purple-500"></div>
+                    
+                    {/* Category Title Header */}
+                    <div className="flex items-center justify-between gap-4 pb-3 border-b border-white/5">
+                      <div className="flex items-center gap-2 flex-1">
+                        <span className="text-xs font-bold text-purple-400">Category {secIdx + 1}:</span>
+                        <input
+                          type="text"
+                          value={sec.title}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setFeedbackSections(prev => prev.map((s, idx) => idx === secIdx ? { ...s, title: val } : s));
+                          }}
+                          className="bg-transparent text-sm font-bold text-white border-b border-transparent hover:border-white/20 focus:border-purple-500 focus:outline-none px-1 py-0.5 flex-1 max-w-sm"
+                          placeholder="Category Name"
+                        />
+                      </div>
+                      <button
+                        onClick={() => {
+                          if (window.confirm(`Are you sure you want to delete the "${sec.title}" category? All its questions will be removed.`)) {
+                            setFeedbackSections(prev => prev.filter((_, idx) => idx !== secIdx));
+                          }
+                        }}
+                        className="text-xs text-rose-500 hover:text-rose-400 font-bold transition cursor-pointer"
+                      >
+                        Delete Category
+                      </button>
+                    </div>
+
+                    {/* Questions Stepper Details */}
+                    <div className="space-y-3">
+                      {sec.questions.map((q, qIdx) => (
+                        <div key={qIdx} className="flex items-center gap-3 p-3 bg-white/5 border border-white/8 rounded-2xl">
+                          <span className="text-[10px] font-bold text-slate-500 font-mono">Q{qIdx + 1}:</span>
+                          <input
+                            type="text"
+                            value={q.label}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setFeedbackSections(prev => prev.map((s, sIdx) => sIdx === secIdx ? {
+                                ...s,
+                                questions: s.questions.map((ques, idx) => idx === qIdx ? { ...ques, label: val } : ques)
+                              } : s));
+                            }}
+                            className="bg-transparent text-xs text-slate-200 focus:outline-none flex-1 border-b border-transparent focus:border-purple-500/40"
+                            placeholder="Type evaluation rating question..."
+                          />
+                          <button
+                            onClick={() => {
+                              setFeedbackSections(prev => prev.map((s, sIdx) => sIdx === secIdx ? {
+                                ...s,
+                                questions: s.questions.filter((_, idx) => idx !== qIdx)
+                              } : s));
+                            }}
+                            className="text-[10px] text-slate-500 hover:text-rose-500 font-semibold transition cursor-pointer"
+                          >
+                            Delete Field
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Question Addition controls */}
+                    <div className="pt-2 flex justify-start">
+                      <button
+                        onClick={() => {
+                          const newKey = `q${sec.questions.length + 1}_${Date.now()}`;
+                          setFeedbackSections(prev => prev.map((s, sIdx) => sIdx === secIdx ? {
+                            ...s,
+                            questions: [...s.questions, { key: newKey, label: "New Rating Evaluation Question" }]
+                          } : s));
+                        }}
+                        className="px-3 py-1.5 bg-purple-500/10 border border-purple-500/20 text-purple-400 hover:bg-purple-500 hover:text-white rounded-xl text-xs font-bold transition cursor-pointer"
+                      >
+                        + Add Rating Question
+                      </button>
+                    </div>
+
+                  </div>
+                ))}
+              </div>
+
+              {/* Add category footer control */}
+              <div className="flex justify-center pt-4">
+                <button
+                  onClick={() => {
+                    const newSection = {
+                      title: "New Evaluation Category",
+                      questions: [
+                        { key: `q1_${Date.now()}`, label: "Rate the performance or availability in this category." }
+                      ]
+                    };
+                    setFeedbackSections(prev => [...prev, newSection]);
+                  }}
+                  className="px-6 py-3 bg-white/10 hover:bg-white/15 border border-white/12 text-white rounded-2xl text-xs font-bold transition flex items-center gap-2 cursor-pointer shadow-xl shadow-black/30"
+                >
+                  + Add New Evaluation Category Section
+                </button>
+              </div>
 
             </div>
           )}
@@ -1926,7 +2583,7 @@ function App() {
             <div className="space-y-6">
               
               {/* FILTER BAR SECTION */}
-              <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 print:hidden">
+              <div className="glass-panel p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 print:hidden">
                 <div className="flex items-center gap-2">
                   <Filter className="w-4 h-4 text-blue-500" />
                   <span className="text-sm font-semibold text-slate-200">Filter Feedback Stream:</span>
@@ -1937,7 +2594,7 @@ function App() {
                   <select 
                     value={filters.subject_id}
                     onChange={(e) => setFilters(prev => ({ ...prev, subject_id: e.target.value }))}
-                    className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-350 focus:outline-none focus:border-blue-500"
+                    className="glass-input py-1.5 px-3 text-xs focus:ring-1 focus:ring-blue-500/20"
                   >
                     <option value="">All Subjects</option>
                     {subjects.map(s => (
@@ -1950,7 +2607,7 @@ function App() {
                     <select 
                       value={filters.teacher_id}
                       onChange={(e) => setFilters(prev => ({ ...prev, teacher_id: e.target.value }))}
-                      className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-350 focus:outline-none focus:border-blue-500"
+                      className="glass-input py-1.5 px-3 text-xs focus:ring-1 focus:ring-blue-500/20"
                     >
                       <option value="">All Teachers</option>
                       {teachers.map(t => (
@@ -1963,7 +2620,7 @@ function App() {
                   <select 
                     value={filters.semester}
                     onChange={(e) => setFilters(prev => ({ ...prev, semester: e.target.value }))}
-                    className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-350 focus:outline-none focus:border-blue-500"
+                    className="glass-input py-1.5 px-3 text-xs focus:ring-1 focus:ring-blue-500/20"
                   >
                     <option value="">All Semesters</option>
                     {Array.from({ length: 8 }).map((_, idx) => (
@@ -1974,20 +2631,20 @@ function App() {
 
                 <button
                   onClick={() => setFilters({ subject_id: '', teacher_id: '', semester: '' })}
-                  className="px-3 py-1.5 bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-400 hover:text-white rounded-lg text-xs font-semibold transition"
+                  className="px-4 py-2 bg-white/10 hover:bg-white/15 border border-white/10 text-slate-200 hover:text-white rounded-xl text-xs font-bold transition duration-200 cursor-pointer"
                 >
                   Clear Filters
                 </button>
               </div>
 
               {/* FEEDBACK DATATABLE CARD */}
-              <div className="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden shadow-2xl">
-                <div className="p-5 border-b border-slate-850 flex justify-between items-center bg-slate-950/50">
+              <div className="glass-panel overflow-hidden">
+                <div className="p-5 border-b border-white/5 flex justify-between items-center bg-transparent">
                   <div>
                     <h3 className="font-bold text-white text-base">Feedback Pipelines Archive</h3>
                     <p className="text-xs text-slate-400 mt-1">Real-time classification tags and extracted metadata logs.</p>
                   </div>
-                  <span className="px-2.5 py-1 bg-slate-900 border border-slate-800 text-slate-300 font-semibold text-xs rounded-lg">
+                  <span className="px-2.5 py-1 bg-white/10 border border-white/10 text-slate-200 font-semibold text-xs rounded-xl">
                     {feedbacks.length} submissions found
                   </span>
                 </div>
@@ -1995,7 +2652,7 @@ function App() {
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs border-collapse">
                     <thead>
-                      <tr className="border-b border-slate-850 bg-slate-900/30 text-slate-450 font-bold uppercase tracking-wider">
+                      <tr className="border-b border-white/5 bg-white/5 text-slate-200 font-bold uppercase tracking-wider">
                         <th className="p-4">Submission Text</th>
                         <th className="p-4">Rating</th>
                         <th className="p-4">Sentiment</th>
@@ -2034,7 +2691,7 @@ function App() {
                                 })}
                               </div>
                               <div className="flex flex-wrap items-center gap-2 mt-2 text-[10px] text-slate-500">
-                                <span className="bg-slate-900 px-2 py-0.5 rounded border border-slate-800 font-bold text-slate-400">{fb.subject.code}</span>
+                                <span className="bg-blue-500/10 text-blue-455 border border-blue-500/20 px-2 py-0.5 rounded font-bold">{fb.subject.code}</span>
                                 <span>•</span>
                                 <span>Instructor: <strong className="text-slate-400">{fb.teacher.name}</strong></span>
                                 <span>•</span>
@@ -2075,7 +2732,7 @@ function App() {
                               <div className="flex flex-wrap gap-1 max-w-[150px]">
                                 {fb.keywords ? (
                                   fb.keywords.split(',').map((kw, i) => (
-                                    <span key={i} className="bg-slate-900 border border-slate-800 text-slate-400 text-[9px] px-1.5 py-0.5 rounded">
+                                    <span key={i} className="bg-white/10 border border-white/10 text-slate-300 text-[9px] px-1.5 py-0.5 rounded-full">
                                       {kw.trim()}
                                     </span>
                                   ))
@@ -2119,7 +2776,6 @@ function App() {
           )}
 
         </main>
-      </div>
 
       {/* ========================================================================= */}
       {/* ==================== 5. PRINT CSS STYLE LAYOUTS FOR PDF ================= */}

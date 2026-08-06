@@ -1,5 +1,5 @@
 import datetime
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Float
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Float, Boolean
 from sqlalchemy.orm import relationship
 from database import Base
 
@@ -14,6 +14,7 @@ class User(Base):
     department = Column(String, nullable=True)
     roll_number = Column(String, unique=True, index=True, nullable=True)  # for students
     full_name = Column(String, nullable=True)
+    is_blocked = Column(Boolean, default=False, nullable=False)
     
     teacher_id = Column(Integer, ForeignKey("teachers.id"), nullable=True)
     teacher = relationship("Teacher")

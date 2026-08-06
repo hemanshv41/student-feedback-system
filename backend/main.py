@@ -76,6 +76,11 @@ def login_for_access_token(form_data: schemas.UserLogin, db: Session = Depends(g
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    if user.is_blocked:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Your account is blocked by the administrator."
+        )
     access_token = auth.create_access_token(data={"sub": user.username})
     return {
         "access_token": access_token,
@@ -206,9 +211,11 @@ def list_feedbacks(
 ):
     query = db.query(models.Feedback)
     
-    # Force filter to only show this instructor's feedbacks if role is faculty
+    # Force filter to only show this instructor's feedbacks if role is faculty, or student's own feedback if student
     if current_user.role == "faculty" and current_user.teacher_id:
         query = query.filter(models.Feedback.teacher_id == current_user.teacher_id)
+    elif current_user.role == "student":
+        query = query.filter(models.Feedback.student_roll == current_user.roll_number)
     else:
         if teacher_id:
             query = query.filter(models.Feedback.teacher_id == teacher_id)
@@ -240,6 +247,8 @@ def get_dashboard_analytics(
     # Apply Filters
     if current_user.role == "faculty" and current_user.teacher_id:
         query = query.filter(models.Feedback.teacher_id == current_user.teacher_id)
+    elif current_user.role == "student":
+        query = query.filter(models.Feedback.student_roll == current_user.roll_number)
     else:
         if teacher_id:
             query = query.filter(models.Feedback.teacher_id == teacher_id)
@@ -375,21 +384,30 @@ def seed_database(db: Session = Depends(get_db)):
     db.query(models.Feedback).delete()
     db.query(models.Subject).delete()
     db.query(models.Teacher).delete()
+    db.query(models.User).delete()
     db.commit()
 
-    # 1. Create Default Admin User
-    admin_user = db.query(models.User).filter(models.User.username == "admin").first()
-    if not admin_user:
-        hashed_pwd = auth.get_password_hash("admin123")
-        admin_user = models.User(
-            username="admin",
-            email="admin@aktu.edu",
-            hashed_password=hashed_pwd,
-            role="admin",
-            department="Computer Science"
-        )
-        db.add(admin_user)
-        db.commit()
+    # 1. Create Default Admin Users
+    admin_user = models.User(
+        username="admin",
+        email="admin@aktu.edu",
+        hashed_password=auth.get_password_hash("admin123"),
+        role="admin",
+        department="Computer Science",
+        full_name="Hemansh Verma"
+    )
+    db.add(admin_user)
+    
+    hemansh_admin = models.User(
+        username="hemanshv@gmail.com",
+        email="hemanshv@gmail.com",
+        hashed_password=auth.get_password_hash("1234567890"),
+        role="admin",
+        department="Computer Science",
+        full_name="Hemansh Verma"
+    )
+    db.add(hemansh_admin)
+    db.commit()
         
     # 2. Add Default AKTU University Subjects
     subjects_to_add = [
@@ -657,6 +675,44 @@ def seed_database(db: Session = Depends(get_db)):
         
     db.commit()
     return {"message": "Database seeded successfully with AKTU courses and teachers. Admin created (username: admin, password: admin123)."}
+
+# ==================== ADMIN USER MANAGEMENT ROUTING ====================
+
+@app.get("/api/users", response_model=List[schemas.UserResponse])
+def get_all_users(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_active_admin)
+):
+    # Retrieve all users (excluding current admin to avoid self-blocking)
+    return db.query(models.User).filter(models.User.id != current_user.id).all()
+
+@app.put("/api/users/{user_id}/block", response_model=schemas.UserResponse)
+def block_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_active_admin)
+):
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    user.is_blocked = True
+    db.commit()
+    db.refresh(user)
+    return user
+
+@app.put("/api/users/{user_id}/unblock", response_model=schemas.UserResponse)
+def unblock_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_active_admin)
+):
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    user.is_blocked = False
+    db.commit()
+    db.refresh(user)
+    return user
 
 # Automatically run seed when backend starts to ensure ready-to-test state
 @app.on_event("startup")

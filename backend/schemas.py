@@ -25,6 +25,7 @@ class UserResponse(BaseModel):
     teacher_id: Optional[int] = None
     roll_number: Optional[str] = None
     full_name: Optional[str] = None
+    is_blocked: bool = False
 
     class Config:
         from_attributes = True
