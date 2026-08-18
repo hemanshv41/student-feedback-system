@@ -263,7 +263,10 @@ function App() {
       if (savedToken) {
         try {
           const res = await fetch(`${API_BASE_URL}/api/auth/me`, {
-            headers: { 'Authorization': `Bearer ${savedToken}` }
+            headers: { 
+              'Authorization': `Bearer ${savedToken}`,
+              'Bypass-Tunnel-Reminder': 'true'
+            }
           });
           if (!res.ok) {
             handleLogout();
@@ -298,6 +301,7 @@ function App() {
   const apiFetch = async (endpoint, options = {}) => {
     const headers = {
       'Content-Type': 'application/json',
+      'Bypass-Tunnel-Reminder': 'true',
       ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
       ...options.headers
     };
@@ -322,11 +326,15 @@ function App() {
 
   const fetchMetadata = async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/subjects`);
+      const res = await fetch(`${API_BASE_URL}/api/subjects`, {
+        headers: { 'Bypass-Tunnel-Reminder': 'true' }
+      });
       const data = await res.json();
       setSubjects(data);
       
-      const resT = await fetch(`${API_BASE_URL}/api/teachers`);
+      const resT = await fetch(`${API_BASE_URL}/api/teachers`, {
+        headers: { 'Bypass-Tunnel-Reminder': 'true' }
+      });
       const dataT = await resT.json();
       setTeachers(dataT);
       
@@ -387,7 +395,10 @@ function App() {
     try {
       const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Bypass-Tunnel-Reminder': 'true'
+        },
         body: JSON.stringify(loginForm)
       });
       if (!response.ok) {
@@ -448,7 +459,10 @@ function App() {
     try {
       const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Bypass-Tunnel-Reminder': 'true'
+        },
         body: JSON.stringify(payload)
       });
       
@@ -587,7 +601,10 @@ function App() {
 
       const response = await fetch(`${API_BASE_URL}/api/feedback/submit`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Bypass-Tunnel-Reminder': 'true'
+        },
         body: JSON.stringify(payload)
       });
       
@@ -617,7 +634,10 @@ function App() {
 
   const handleSeedData = async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/setup/seed`, { method: 'POST' });
+      const res = await fetch(`${API_BASE_URL}/api/setup/seed`, { 
+        method: 'POST',
+        headers: { 'Bypass-Tunnel-Reminder': 'true' }
+      });
       const data = await res.json();
       alert(data.message);
       // Reload metadata & lists
