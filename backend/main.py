@@ -526,6 +526,15 @@ def seed_database(db: Session = Depends(get_db)):
             "department": "Information Technology",
             "roll_number": "2000290100002",
             "full_name": "Aarav Sharma"
+        },
+        {
+            "username": "2306410100034",
+            "email": "student3@aktu.edu",
+            "password": "student123",
+            "role": "student",
+            "department": "Computer Science",
+            "roll_number": "2306410100034",
+            "full_name": "Hemansh Verma"
         }
     ]
     for s in student_users:
