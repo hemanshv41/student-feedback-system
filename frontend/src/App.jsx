@@ -91,7 +91,7 @@ const initializeRatings = (sections) => {
   (sections || []).forEach(sec => {
     ratings[sec.title] = {};
     (sec.questions || []).forEach(q => {
-      ratings[sec.title][q.key] = 5; // Default to 5 stars
+      ratings[sec.title][q.key] = 0; // Default to 0 stars (unfilled)
     });
   });
   return ratings;
@@ -863,7 +863,7 @@ function App() {
       )}
 
       {/* Main Container Area */}
-      <main className="flex-1 max-w-6xl w-full mx-auto px-4 py-6 relative z-10 custom-scrollbar overflow-y-auto space-y-6">
+      <main className="flex-1 max-w-6xl w-full mx-auto px-4 py-6 relative z-10 space-y-6">
 
           {/* ========================================================================= */}
           {/* ========================== 1.5 STUDENT DASHBOARD ========================= */}
@@ -1275,7 +1275,7 @@ function App() {
                           {/* Star rating questions list */}
                           <div className="space-y-4 max-h-72 overflow-y-auto pr-1 custom-scrollbar">
                             {section.questions.map(q => {
-                              const curRating = studentForm.section_ratings[section.title]?.[q.key] || 5;
+                              const curRating = studentForm.section_ratings[section.title]?.[q.key] || 0;
                               return (
                                 <div key={q.key} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-white/5 border border-white/8 rounded-2xl">
                                   <span className="text-xs text-slate-200">{q.label}</span>
@@ -1285,9 +1285,9 @@ function App() {
                                         key={star}
                                         type="button"
                                         onClick={() => handleRatingChange(section.title, q.key, star)}
-                                        className="text-slate-600 hover:scale-110 transition"
+                                        className="text-slate-600 hover:scale-110 transition cursor-pointer"
                                       >
-                                        <Star className={`w-5 h-5 ${star <= curRating ? 'fill-amber-400 text-amber-400' : 'text-slate-600'}`} />
+                                        <Star className={`w-5 h-5 ${star <= curRating ? 'fill-amber-400 text-amber-400' : 'text-slate-650'}`} />
                                       </button>
                                     ))}
                                   </div>
@@ -1339,6 +1339,14 @@ function App() {
                             <button
                               type="button"
                               onClick={() => {
+                                // Validate all questions in this section have been rated
+                                const secRatings = studentForm.section_ratings[section.title] || {};
+                                const unrated = section.questions.some(q => !secRatings[q.key] || secRatings[q.key] === 0);
+                                if (unrated) {
+                                  setFeedbackError(`Please rate all questions in the "${section.title}" section before proceeding.`);
+                                  return;
+                                }
+
                                 const isMandatory = section.title === "Overall Satisfaction";
                                 if (isMandatory && comment.trim().length < 10) {
                                   setFeedbackError(`Please provide at least 10 characters comment feedback for "${section.title}" to run AI analysis.`);
@@ -1347,7 +1355,7 @@ function App() {
                                 setFeedbackError('');
                                 setFormStep(formStep + 1);
                               }}
-                              className="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 rounded-xl transition text-xs"
+                              className="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 rounded-xl transition text-xs cursor-pointer"
                             >
                               Next Section
                             </button>
