@@ -13,6 +13,102 @@ import {
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || `${window.location.protocol}//${window.location.hostname}:8000`;
 
+const StudentIllustrationSVG = () => (
+  <svg viewBox="0 0 300 200" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+    <circle cx="160" cy="110" r="70" fill="url(#bgGlow)" />
+    <path d="M100,140 C100,100 130,85 170,85 C210,85 220,110 220,135 C220,165 190,175 160,175 C120,175 100,165 100,140 Z" fill="url(#beanbagGrad)" />
+    <path d="M135,145 L115,165" stroke="#1e1b4b" strokeWidth="12" strokeLinecap="round" />
+    <path d="M115,165 L105,160" stroke="#ffffff" strokeWidth="14" strokeLinecap="round" />
+    <path d="M155,147 L140,170" stroke="#1e1b4b" strokeWidth="12" strokeLinecap="round" />
+    <path d="M140,170 L130,165" stroke="#ffffff" strokeWidth="14" strokeLinecap="round" />
+    <path d="M145,105 C135,115 135,145 150,145 C165,145 175,130 175,115 C175,105 160,105 145,105 Z" fill="url(#hoodieGrad)" />
+    <circle cx="160" cy="92" r="14" fill="#fcd34d" />
+    <path d="M150,88 C148,82 155,78 162,78 C170,78 172,83 170,88 Z" fill="#1e293b" />
+    <path d="M132,125 L158,125 L165,138 L125,138 Z" fill="#cbd5e1" />
+    <path d="M132,125 L128,110 L154,110 L158,125 Z" fill="#e2e8f0" />
+    <rect x="133" y="113" width="18" height="10" fill="#a855f7" opacity="0.3" />
+    <path d="M60,65 L90,50 L80,75 L75,70 Z M75,70 L90,50 L80,75" fill="url(#paperPlaneGrad)" />
+    <rect x="200" y="35" width="45" height="32" rx="8" fill="url(#bubbleGrad)" />
+    <path d="M210,67 L215,75 L220,67" fill="#1e1b4b" />
+    <rect x="208" y="52" width="4" height="10" rx="1" fill="#ec4899" />
+    <rect x="215" y="45" width="4" height="17" rx="1" fill="#a855f7" />
+    <rect x="222" y="48" width="4" height="14" rx="1" fill="#3b82f6" />
+    <rect x="229" y="42" width="4" height="20" rx="1" fill="#10b981" />
+    <circle cx="218" cy="115" r="20" fill="url(#bubbleGrad)" />
+    <circle cx="218" cy="115" r="12" fill="#fbbf24" />
+    <circle cx="214" cy="112" r="1.5" fill="#000" />
+    <circle cx="222" cy="112" r="1.5" fill="#000" />
+    <path d="M213,118 Q218,124 223,118" stroke="#000" strokeWidth="1.5" strokeLinecap="round" fill="none" />
+    <path d="M85,115 L88,122 L95,123 L90,128 L92,135 L85,131 L78,135 L80,128 L75,123 L82,122 Z" fill="#fbbf24" opacity="0.8" />
+    <defs>
+      <radialGradient id="bgGlow" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stopColor="#8b5cf6" stopOpacity="0.25" />
+        <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0" />
+      </radialGradient>
+      <linearGradient id="beanbagGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#4f46e5" />
+        <stop offset="100%" stopColor="#312e81" />
+      </linearGradient>
+      <linearGradient id="hoodieGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stopColor="#a855f7" />
+        <stop offset="100%" stopColor="#6366f1" />
+      </linearGradient>
+      <linearGradient id="paperPlaneGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#c084fc" />
+        <stop offset="100%" stopColor="#818cf8" />
+      </linearGradient>
+      <linearGradient id="bubbleGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#1e1b4b" />
+        <stop offset="100%" stopColor="#0f172a" />
+      </linearGradient>
+    </defs>
+  </svg>
+);
+
+const ClipboardIllustrationSVG = () => (
+  <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+    <rect x="25" y="20" width="50" height="65" rx="8" fill="url(#boardGrad)" stroke="#312e81" strokeWidth="1.5" />
+    <rect x="42" y="13" width="16" height="10" rx="3" fill="#94a3b8" />
+    <circle cx="50" cy="18" r="2" fill="#475569" />
+    <line x1="35" y1="38" x2="65" y2="38" stroke="#cbd5e1" strokeWidth="2" strokeLinecap="round" />
+    <line x1="35" y1="48" x2="60" y2="48" stroke="#cbd5e1" strokeWidth="2" strokeLinecap="round" />
+    <line x1="35" y1="58" x2="65" y2="58" stroke="#cbd5e1" strokeWidth="2" strokeLinecap="round" />
+    <line x1="35" y1="68" x2="50" y2="68" stroke="#cbd5e1" strokeWidth="2" strokeLinecap="round" />
+    <g transform="rotate(35 60 70)">
+      <rect x="68" y="45" width="6" height="25" rx="1.5" fill="#e11d48" />
+      <polygon points="68,70 74,70 71,76" fill="#fde047" />
+      <polygon points="70,74 72,74 71,76" fill="#000000" />
+    </g>
+    <defs>
+      <linearGradient id="boardGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#1e1b4b" />
+        <stop offset="100%" stopColor="#0f172a" />
+      </linearGradient>
+    </defs>
+  </svg>
+);
+
+const BarGraphIllustrationSVG = () => (
+  <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+    <path d="M10,80 L50,60 L90,80 L50,100 Z" fill="#1e1b4b" opacity="0.5" />
+    <g transform="translate(18, 0)">
+      <path d="M10,45 L20,40 L20,80 L10,85 Z" fill="#f43f5e" />
+      <path d="M20,40 L30,45 L30,85 L20,80 Z" fill="#be123c" />
+      <path d="M10,45 L20,40 L30,45 L20,50 Z" fill="#fda4af" />
+    </g>
+    <g transform="translate(38, -10)">
+      <path d="M10,35 L20,30 L20,80 L10,85 Z" fill="#f59e0b" />
+      <path d="M20,30 L30,35 L30,85 L20,80 Z" fill="#b45309" />
+      <path d="M10,35 L20,30 L30,35 L20,40 Z" fill="#fde047" />
+    </g>
+    <g transform="translate(58, 10)">
+      <path d="M10,55 L20,50 L20,80 L10,85 Z" fill="#10b981" />
+      <path d="M20,50 L30,55 L30,85 L20,80 Z" fill="#047857" />
+      <path d="M10,55 L20,50 L30,55 L20,60 Z" fill="#6ee7b7" />
+    </g>
+  </svg>
+);
+
 const DEFAULT_SECTIONS = [
   {
     title: "Teaching Quality",
@@ -980,7 +1076,13 @@ function App() {
               {/* Welcome Banner */}
               <div className="glass-panel relative overflow-hidden border border-violet-900/15 bg-gradient-to-r from-purple-950/25 via-indigo-950/20 to-slate-950/30 p-6 md:p-8 rounded-3xl rounded-br-[60px] flex flex-col md:flex-row justify-between items-start md:items-center gap-6 shadow-2xl shadow-purple-950/10">
                 <div className="absolute top-0 inset-x-0 h-[1.5px] bg-gradient-to-r from-purple-600 via-indigo-500 to-cyan-500"></div>
-                <div className="relative z-10">
+                
+                {/* Embedded Student Laptop Illustration */}
+                <div className="absolute right-12 bottom-[-15px] w-64 h-48 hidden md:block z-0 pointer-events-none opacity-90">
+                  <StudentIllustrationSVG />
+                </div>
+                
+                <div className="relative z-10 md:max-w-[60%]">
                   <span className="text-[10px] font-bold text-purple-400 uppercase tracking-widest block">Student Console</span>
                   <h2 className="text-3xl md:text-4xl font-normal font-serif-display text-slate-900 dark:text-white mt-2 tracking-wide leading-tight">
                     Welcome back,<br />
@@ -1185,27 +1287,34 @@ function App() {
 
                       return (
                         <div className="space-y-3">
-                          {pending.map((sub) => (
-                            <div key={sub.id} className="p-3.5 bg-white/5 border border-white/8 rounded-2xl space-y-3 flex flex-col justify-between hover:bg-white/10 hover:border-white/15 transition-all duration-300">
-                              <div>
+                          {pending.map((sub, index) => (
+                            <div key={sub.id} className="p-3.5 bg-white/5 border border-white/8 rounded-2xl flex items-center justify-between gap-4 hover:bg-white/10 hover:border-white/15 transition-all duration-300 relative overflow-hidden">
+                              <div className="flex-1 space-y-3">
+                                <div>
                                   <div className="flex items-center gap-2">
                                     <span className="text-[10px] font-bold text-purple-400 bg-purple-500/10 px-2.5 py-0.5 rounded-full border border-purple-500/20">
                                       {sub.code}
                                     </span>
-                                    <span className="text-[10px] text-slate-400">{sub.semester}</span>
+                                    <span className="text-[10px] text-slate-450 dark:text-slate-400">{sub.semester}</span>
                                   </div>
-                                  <h4 className="text-xs font-bold text-white mt-1.5 leading-tight">
+                                  <h4 className="text-xs font-bold text-slate-900 dark:text-white mt-1.5 leading-tight">
                                     {sub.name}
                                   </h4>
                                 </div>
                                 <button
                                   onClick={() => startFeedbackForSubject(sub)}
-                                  className="w-full bg-white/10 hover:bg-purple-600 text-slate-200 hover:text-white border border-white/10 py-1.5 rounded-xl text-[10px] font-bold transition flex items-center justify-center gap-1 cursor-pointer"
+                                  className="w-full sm:w-auto bg-slate-100 dark:bg-white/10 hover:bg-purple-650 text-slate-700 dark:text-slate-200 hover:text-white border border-slate-200 dark:border-white/10 px-4 py-1.5 rounded-xl text-[10px] font-bold transition flex items-center justify-center gap-1 cursor-pointer"
                                 >
                                   Evaluate Subject <ArrowRight className="w-3 h-3" />
                                 </button>
                               </div>
-                            ))}
+                              
+                              {/* Custom Illustration Graphic on the Right Side (Matches Design Mock) */}
+                              <div className="w-14 h-14 shrink-0 pointer-events-none opacity-90 hidden sm:block">
+                                {index === 0 ? <ClipboardIllustrationSVG /> : <BarGraphIllustrationSVG />}
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       );
                     })()}
