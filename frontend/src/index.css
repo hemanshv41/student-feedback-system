@@ -44,7 +44,7 @@ html {
 }
 
 .light .glass-panel,
-:not(.dark) .glass-panel {
+html:not(.dark) .glass-panel {
   background: #ffffff;
   border: 1px solid #e2e8f0;
   box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.04), 0 8px 10px -6px rgba(0, 0, 0, 0.02);
@@ -57,7 +57,7 @@ html {
   transform: translateY(-2px);
 }
 .light .glass-panel-hover:hover,
-:not(.dark) .glass-panel-hover:hover {
+html:not(.dark) .glass-panel-hover:hover {
   background: #ffffff;
   border-color: #cbd5e1;
   box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.08);
@@ -74,7 +74,7 @@ html {
   transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .light .glass-pill-nav,
-:not(.dark) .glass-pill-nav {
+html:not(.dark) .glass-pill-nav {
   background: rgba(255, 255, 255, 0.85);
   border: 1px solid #e2e8f0;
   box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
@@ -90,7 +90,7 @@ html {
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .light .glass-input,
-:not(.dark) .glass-input {
+html:not(.dark) .glass-input {
   background: #ffffff;
   border: 1px solid #cbd5e1;
   color: #0f172a;
@@ -104,8 +104,8 @@ select option {
 }
 .light .glass-input option,
 .light select option,
-:not(.dark) .glass-input option,
-:not(.dark) select option {
+html:not(.dark) .glass-input option,
+html:not(.dark) select option {
   background-color: #ffffff;
   color: #0f172a;
 }
@@ -117,7 +117,7 @@ select option {
   outline: none;
 }
 .light .glass-input:focus,
-:not(.dark) .glass-input:focus {
+html:not(.dark) .glass-input:focus {
   background: #ffffff;
   border-color: #3b82f6;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
