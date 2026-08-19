@@ -7,7 +7,7 @@ import {
   BrainCircuit, MessageSquare, Bot, LogIn, LogOut, 
   Star, AlertTriangle, CheckCircle, RefreshCw, Filter, 
   FileText, BookOpen, Clock, Activity, Sparkles, Send,
-  ArrowRight
+  ArrowRight, Sun, Moon, ArrowUp, ArrowDown
 } from 'lucide-react';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || `${window.location.protocol}//${window.location.hostname}:8000`;
@@ -146,6 +146,7 @@ function App() {
   
   // Theme state
   const [theme, setTheme] = useState('dark');
+  const [showScrollButtons, setShowScrollButtons] = useState(false);
 
   // Metadata arrays
   const [subjects, setSubjects] = useState([]);
@@ -251,11 +252,26 @@ function App() {
 
   // App initialization
   useEffect(() => {
-    // Apply dark mode on mount
-    document.documentElement.classList.add('dark');
+    // Apply initial theme on mount
+    const savedTheme = localStorage.getItem('theme') || 'dark';
+    setTheme(savedTheme);
+    if (savedTheme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
     
     // Load metadata
     fetchMetadata();
+
+    const handleScroll = () => {
+      if (window.scrollY > 150) {
+        setShowScrollButtons(true);
+      } else {
+        setShowScrollButtons(false);
+      }
+    };
+    window.addEventListener('scroll', handleScroll);
 
     // Verify token validity on startup (checks for block status)
     const verifyToken = async () => {
@@ -282,6 +298,10 @@ function App() {
       }
     };
     verifyToken();
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+    };
   }, []);
 
   // Fetch dashboard and feedback list whenever view changes, or filters change
@@ -654,9 +674,11 @@ function App() {
   const toggleTheme = () => {
     if (theme === 'dark') {
       setTheme('light');
+      localStorage.setItem('theme', 'light');
       document.documentElement.classList.remove('dark');
     } else {
       setTheme('dark');
+      localStorage.setItem('theme', 'dark');
       document.documentElement.classList.add('dark');
     }
   };
@@ -742,7 +764,7 @@ function App() {
   const BAR_COLORS = ['#3b82f6', '#06b6d4', '#8b5cf6', '#f59e0b', '#ef4444'];
 
   return (
-    <div className="relative min-h-screen bg-[#080809] text-[#e4e4e7] flex flex-col font-sans transition-colors duration-300 overflow-x-hidden">
+    <div className="relative min-h-screen bg-slate-50 dark:bg-[#080809] text-slate-800 dark:text-[#e4e4e7] flex flex-col font-sans transition-colors duration-300 overflow-x-hidden">
       
       {/* Liquid Aurora Background Glows */}
       <div className="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] rounded-full bg-gradient-to-tr from-lime-500/10 to-emerald-500/5 blur-[120px] animate-aurora-1 pointer-events-none z-0"></div>
@@ -868,6 +890,15 @@ function App() {
                 </span>
               </div>
               
+              {/* Theme Toggle Button */}
+              <button 
+                onClick={toggleTheme}
+                className="w-9 h-9 rounded-full bg-white/10 border border-white/5 flex items-center justify-center text-slate-300 hover:bg-white/20 transition cursor-pointer"
+                title={theme === 'dark' ? "Switch to Light Mode" : "Switch to Dark Mode"}
+              >
+                {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-blue-400" />}
+              </button>
+
               {/* Profile Avatar / Logout dropdown shortcut */}
               <button 
                 onClick={handleLogout}
@@ -1181,7 +1212,12 @@ function App() {
                               <input 
                                 type="text" 
                                 value={studentForm.student_roll}
-                                onChange={(e) => setStudentForm(prev => ({ ...prev, student_roll: e.target.value }))}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  if (val === '' || /^\d+$/.test(val)) {
+                                    setStudentForm(prev => ({ ...prev, student_roll: val }));
+                                  }
+                                }}
                                 placeholder="Enter Roll Number (e.g. 2000290100001)"
                                 className="w-full glass-input"
                                 required
@@ -1493,6 +1529,18 @@ function App() {
               {/* Glassmorphic Login Card */}
               <div className="glass-panel max-w-md w-full p-6 md:p-8 relative z-10 shadow-2xl border border-slate-200/55 dark:border-slate-800/80 animate-fade-in-up">
                 
+                {/* Theme toggle on Login Page */}
+                <div className="absolute top-4 right-4 z-20">
+                  <button 
+                    type="button"
+                    onClick={toggleTheme}
+                    className="w-8 h-8 rounded-full bg-slate-100/80 dark:bg-white/5 border border-slate-200 dark:border-white/5 flex items-center justify-center text-slate-650 dark:text-slate-350 hover:bg-slate-200 dark:hover:bg-white/10 transition cursor-pointer"
+                    title={theme === 'dark' ? "Switch to Light Mode" : "Switch to Dark Mode"}
+                  >
+                    {theme === 'dark' ? <Sun className="w-3.5 h-3.5 text-amber-500" /> : <Moon className="w-3.5 h-3.5 text-blue-600" />}
+                  </button>
+                </div>
+
                 {/* Visual indicator bar */}
                 <div className={`absolute top-0 inset-x-0 h-1.5 rounded-t-2xl transition-all duration-500 ${
                   currentView === 'admin-login' 
@@ -1624,9 +1672,13 @@ function App() {
                           onChange={(e) => {
                             const val = e.target.value;
                             if (isSignUp) {
-                              setRegisterForm(prev => ({ ...prev, roll_number: val }));
+                              if (val === '' || /^\d+$/.test(val)) {
+                                setRegisterForm(prev => ({ ...prev, roll_number: val }));
+                              }
                             } else {
-                              setLoginForm(prev => ({ ...prev, username: val }));
+                              if (val === '' || (isNaN(val[0]) ? true : /^\d+$/.test(val))) {
+                                setLoginForm(prev => ({ ...prev, username: val }));
+                              }
                             }
                           }}
                           placeholder="Enter 13-digit Roll Number"
@@ -2889,6 +2941,26 @@ function App() {
               ))}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Scroll Up & Down Floating Buttons */}
+      {showScrollButtons && (
+        <div className="fixed bottom-6 right-6 flex flex-col gap-2.5 z-40 print:hidden">
+          <button
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            className="w-10 h-10 rounded-full bg-slate-800/90 hover:bg-slate-700 dark:bg-slate-905/95 dark:hover:bg-slate-800 text-slate-100 flex items-center justify-center shadow-lg border border-slate-700 dark:border-slate-850 hover:scale-105 transition cursor-pointer"
+            title="Scroll to Top"
+          >
+            <ArrowUp className="w-5 h-5" />
+          </button>
+          <button
+            onClick={() => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' })}
+            className="w-10 h-10 rounded-full bg-slate-800/90 hover:bg-slate-700 dark:bg-slate-905/95 dark:hover:bg-slate-800 text-slate-100 flex items-center justify-center shadow-lg border border-slate-700 dark:border-slate-850 hover:scale-105 transition cursor-pointer"
+            title="Scroll to Bottom"
+          >
+            <ArrowDown className="w-5 h-5" />
+          </button>
         </div>
       )}
 
