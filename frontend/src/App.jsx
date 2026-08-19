@@ -772,6 +772,24 @@ function App() {
   return (
     <div className="relative min-h-screen text-slate-800 dark:text-[#e4e4e7] flex flex-col font-sans transition-colors duration-300 overflow-x-hidden">
       
+      {/* Wavy Organic Background Curves (Creative Design Mock Reference 1) */}
+      <div className="absolute top-[8%] inset-x-0 h-[450px] overflow-hidden pointer-events-none z-0 opacity-[0.25] dark:opacity-[0.4]">
+        <svg className="w-full h-full" viewBox="0 0 1440 450" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+          <path d="M0,96 C240,192 480,240 720,180 C960,120 1200,80 1440,120 L1440,0 L0,0 Z" fill="url(#wave-grad-1)" />
+          <path d="M0,160 C360,260 720,80 1080,200 C1260,260 1380,220 1440,180 L1440,0 L0,0 Z" fill="url(#wave-grad-2)" opacity="0.6" />
+          <defs>
+            <linearGradient id="wave-grad-1" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#8b5cf6" stopOpacity="0.45" />
+              <stop offset="100%" stopColor="#4f46e5" stopOpacity="0" />
+            </linearGradient>
+            <linearGradient id="wave-grad-2" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#ec4899" stopOpacity="0.35" />
+              <stop offset="100%" stopColor="#a855f7" stopOpacity="0" />
+            </linearGradient>
+          </defs>
+        </svg>
+      </div>
+
       {/* Decorative Custom Background Lines (Creative Vector Graphics Reference 1 & 2) */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none z-0 opacity-[0.2] dark:opacity-[0.35]">
         <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
@@ -808,70 +826,7 @@ function App() {
       <div className="decor-capsule decor-capsule-2 bottom-[20%] right-[8%] opacity-40"></div>
       <div className="decor-capsule decor-capsule-1 top-[60%] left-[40%] opacity-30"></div>
 
-      <div className="flex-1 flex flex-col lg:flex-row w-full relative z-10">
-        
-        {/* Left Sidebar Navigation (Only when logged in) */}
-        {token && (
-          <aside className="w-64 border-r border-slate-200/10 dark:border-white/5 p-6 hidden lg:flex flex-col justify-between shrink-0 bg-[#fafafa]/50 dark:bg-[#07050a]/40 backdrop-blur-md sticky top-0 h-screen">
-            <div className="space-y-8">
-              {/* Brand Logo */}
-              <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => setCurrentView(user?.role === 'student' ? 'student-dashboard' : 'dashboard')}>
-                <div className="p-1.5 bg-purple-600/10 border border-purple-500/25 rounded-lg text-purple-500">
-                  <BrainCircuit className="w-4 h-4" />
-                </div>
-                <span className="font-serif-display font-medium text-lg text-slate-900 dark:text-white tracking-wide">EduFeedback AI</span>
-              </div>
-              
-              {/* Menu items */}
-              <nav className="flex flex-col gap-1">
-                {[
-                  { name: 'Dashboard', icon: LayoutDashboard, view: user?.role === 'student' ? 'student-dashboard' : 'dashboard' },
-                  { name: 'My Reviews', icon: MessageSquare, view: 'student-dashboard', scrollTarget: 'submitted-reviews' },
-                  { name: 'Pending Evaluations', icon: Clock, view: 'student-dashboard', scrollTarget: 'pending-evaluations' },
-                  { name: 'Achievements', icon: Award, view: 'student-dashboard' },
-                  { name: 'Analytics', icon: BarChart3, view: user?.role === 'student' ? 'student-dashboard' : 'dashboard' },
-                  { name: 'Leaderboard', icon: Trophy, view: 'student-dashboard' },
-                  { name: 'Settings', icon: Settings, view: 'student-dashboard' }
-                ].map(item => {
-                  const isActive = currentView === item.view || (item.name === 'Dashboard' && currentView === 'student-dashboard');
-                  return (
-                    <button
-                      key={item.name}
-                      onClick={() => {
-                        setCurrentView(item.view);
-                        if (item.scrollTarget) {
-                          setTimeout(() => {
-                            document.getElementById(item.scrollTarget)?.scrollIntoView({ behavior: 'smooth' });
-                          }, 100);
-                        }
-                      }}
-                      className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all duration-300 cursor-pointer ${
-                        isActive 
-                          ? 'bg-purple-650/15 border border-purple-500/20 text-purple-600 dark:text-purple-400 font-semibold' 
-                          : 'text-slate-500 dark:text-slate-400 hover:bg-white/5 hover:text-slate-200'
-                      }`}
-                    >
-                      <item.icon className="w-4 h-4" />
-                      {item.name}
-                    </button>
-                  );
-                })}
-              </nav>
-            </div>
-            
-            {/* Promo Card at bottom of sidebar */}
-            <div className="glass-panel p-4 relative overflow-hidden bg-gradient-to-b from-purple-950/20 to-indigo-950/30 border border-purple-900/15 rounded-2xl text-center shadow-lg">
-              <div className="w-10 h-10 rounded-full bg-purple-500/10 text-purple-500 rounded-full flex items-center justify-center mx-auto mb-3 border border-purple-500/20">
-                <Sparkles className="w-4 h-4 animate-pulse" />
-              </div>
-              <h4 className="text-xs font-bold text-slate-800 dark:text-white leading-normal">Your feedback drives growth!</h4>
-              <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">Every review helps make a difference.</p>
-            </div>
-          </aside>
-        )}
-        
-        {/* Right content area wrapper */}
-        <div className="flex-1 flex flex-col min-w-0">
+
 
       {/* Floating Pill Header (Only when logged in) */}
       {token && (
@@ -3105,10 +3060,6 @@ function App() {
           </div>
         </div>
       )}
-
-        </div>
-      </div>
-
       {/* Scroll Up & Down Floating Buttons */}
       {showScrollButtons && (
         <div className="fixed bottom-6 right-6 flex flex-col gap-2.5 z-40 print:hidden">
