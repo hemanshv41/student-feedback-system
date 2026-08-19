@@ -786,12 +786,11 @@ function App() {
         <header className="w-full max-w-6xl mx-auto px-4 pt-6 pb-2 sticky top-0 z-30 print:hidden">
           <div className="glass-pill-nav h-16 px-4 flex items-center justify-between gap-4">
             
-            {/* Left Brand Area */}
-            <div className="flex items-center gap-2 shrink-0 cursor-pointer" onClick={() => navigateTo(user?.role === 'student' ? 'student-dashboard' : 'dashboard')}>
-              <div className="p-2 bg-blue-600 rounded-full text-white">
+            <div className="flex items-center gap-2.5 shrink-0 cursor-pointer" onClick={() => navigateTo(user?.role === 'student' ? 'student-dashboard' : 'dashboard')}>
+              <div className="p-1.5 bg-blue-600/10 border border-blue-500/25 rounded-lg text-blue-500">
                 <BrainCircuit className="w-4 h-4" />
               </div>
-              <span className="font-bold text-sm text-white hidden sm:inline leading-none">EduFeedback AI</span>
+              <span className="font-serif-display font-medium text-base text-slate-900 dark:text-white tracking-wide hidden sm:inline">EduFeedback AI</span>
             </div>
 
             {/* Middle Nav Links (pill tabs) */}
@@ -936,8 +935,8 @@ function App() {
                 <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-blue-600 via-violet-500 to-cyan-500"></div>
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative z-10">
                   <div>
-                    <span className="text-[10px] font-bold text-blue-500 uppercase tracking-widest block">Student Console</span>
-                    <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white mt-1">Welcome back, {user?.full_name || 'Student'}!</h2>
+                    <span className="text-[10px] font-bold text-indigo-500 dark:text-indigo-400 uppercase tracking-widest block">Student Console</span>
+                    <h2 className="text-3xl font-normal font-serif-display text-slate-900 dark:text-white mt-1.5 tracking-wide">Welcome back, {user?.full_name || 'Student'}!</h2>
                     <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                       Roll Number: <span className="font-semibold text-slate-700 dark:text-slate-200">{user?.roll_number}</span> | Department: <span className="font-semibold text-slate-700 dark:text-slate-200">{user?.department}</span>
                     </p>
@@ -1141,7 +1140,7 @@ function App() {
                     <CheckCircle className="w-8 h-8" />
                   </div>
                   
-                  <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Feedback Processed Successfully!</h3>
+                  <h3 className="text-2xl font-normal font-serif-display text-slate-900 dark:text-white mb-2 tracking-wide">Feedback Processed Successfully!</h3>
                   <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
                     Our machine learning pipeline analyzed your feedback in real-time, extracted key concerns, and updated the faculty decision dashboard anonymously.
                   </p>
@@ -1169,7 +1168,7 @@ function App() {
                   <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-blue-600 via-violet-500 to-cyan-500"></div>
                   
                   <div className="p-6 md:p-8 border-b border-slate-200/30 dark:border-slate-850">
-                    <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    <h3 className="text-2xl font-normal font-serif-display text-slate-900 dark:text-white flex items-center gap-2.5 tracking-wide">
                       <BrainCircuit className="w-5 h-5 text-blue-500" /> Share Student Feedback
                     </h3>
                     <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
@@ -1596,7 +1595,7 @@ function App() {
                       }`}>
                         <LogIn className="w-5 h-5" />
                       </div>
-                      <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                      <h3 className="text-2xl font-normal font-serif-display text-slate-900 dark:text-white mt-2 tracking-wide">
                         {isSignUp 
                           ? (loginRole === 'student' ? 'Student Registration' : 'Faculty Sign Up')
                           : (loginRole === 'student' ? 'Student Feedback Portal' : 'Faculty Analytics Portal')}
@@ -1615,7 +1614,7 @@ function App() {
                     <div className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-3 border bg-pink-500/10 text-pink-500 border-pink-500/25">
                       <BrainCircuit className="w-5 h-5" />
                     </div>
-                    <h3 className="text-lg font-bold text-slate-900 dark:text-white">Academic Admin Console</h3>
+                    <h3 className="text-2xl font-normal font-serif-display text-slate-900 dark:text-white mt-2 tracking-wide">Academic Admin Console</h3>
                     <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
                       Authenticate administrative credentials to oversee feedback flows and user status.
                     </p>
