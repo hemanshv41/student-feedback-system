@@ -12,8 +12,9 @@ body {
   background-size: 100% 100%, 48px 48px, 48px 48px;
 }
 
-.light body,
-body:not(.dark) {
+html.light body,
+html:not(.dark) body {
+  @apply text-slate-800;
   background-color: #fafbfc;
   background-image: 
     radial-gradient(circle at 50% 35%, rgba(99, 102, 241, 0.04) 0%, transparent 55%),
