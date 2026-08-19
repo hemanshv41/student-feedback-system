@@ -7,7 +7,8 @@ import {
   BrainCircuit, MessageSquare, Bot, LogIn, LogOut, 
   Star, AlertTriangle, CheckCircle, RefreshCw, Filter, 
   FileText, BookOpen, Clock, Activity, Sparkles, Send,
-  ArrowRight, Sun, Moon, ArrowUp, ArrowDown
+  ArrowRight, Sun, Moon, ArrowUp, ArrowDown,
+  LayoutDashboard, Award, Trophy, Settings, BarChart3
 } from 'lucide-react';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || `${window.location.protocol}//${window.location.hostname}:8000`;
@@ -807,6 +808,71 @@ function App() {
       <div className="decor-capsule decor-capsule-2 bottom-[20%] right-[8%] opacity-40"></div>
       <div className="decor-capsule decor-capsule-1 top-[60%] left-[40%] opacity-30"></div>
 
+      <div className="flex-1 flex flex-col lg:flex-row w-full relative z-10">
+        
+        {/* Left Sidebar Navigation (Only when logged in) */}
+        {token && (
+          <aside className="w-64 border-r border-slate-200/10 dark:border-white/5 p-6 hidden lg:flex flex-col justify-between shrink-0 bg-[#fafafa]/50 dark:bg-[#07050a]/40 backdrop-blur-md sticky top-0 h-screen">
+            <div className="space-y-8">
+              {/* Brand Logo */}
+              <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => setCurrentView(user?.role === 'student' ? 'student-dashboard' : 'dashboard')}>
+                <div className="p-1.5 bg-purple-600/10 border border-purple-500/25 rounded-lg text-purple-500">
+                  <BrainCircuit className="w-4 h-4" />
+                </div>
+                <span className="font-serif-display font-medium text-lg text-slate-900 dark:text-white tracking-wide">EduFeedback AI</span>
+              </div>
+              
+              {/* Menu items */}
+              <nav className="flex flex-col gap-1">
+                {[
+                  { name: 'Dashboard', icon: LayoutDashboard, view: user?.role === 'student' ? 'student-dashboard' : 'dashboard' },
+                  { name: 'My Reviews', icon: MessageSquare, view: 'student-dashboard', scrollTarget: 'submitted-reviews' },
+                  { name: 'Pending Evaluations', icon: Clock, view: 'student-dashboard', scrollTarget: 'pending-evaluations' },
+                  { name: 'Achievements', icon: Award, view: 'student-dashboard' },
+                  { name: 'Analytics', icon: BarChart3, view: user?.role === 'student' ? 'student-dashboard' : 'dashboard' },
+                  { name: 'Leaderboard', icon: Trophy, view: 'student-dashboard' },
+                  { name: 'Settings', icon: Settings, view: 'student-dashboard' }
+                ].map(item => {
+                  const isActive = currentView === item.view || (item.name === 'Dashboard' && currentView === 'student-dashboard');
+                  return (
+                    <button
+                      key={item.name}
+                      onClick={() => {
+                        setCurrentView(item.view);
+                        if (item.scrollTarget) {
+                          setTimeout(() => {
+                            document.getElementById(item.scrollTarget)?.scrollIntoView({ behavior: 'smooth' });
+                          }, 100);
+                        }
+                      }}
+                      className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all duration-300 cursor-pointer ${
+                        isActive 
+                          ? 'bg-purple-650/15 border border-purple-500/20 text-purple-600 dark:text-purple-400 font-semibold' 
+                          : 'text-slate-500 dark:text-slate-400 hover:bg-white/5 hover:text-slate-200'
+                      }`}
+                    >
+                      <item.icon className="w-4 h-4" />
+                      {item.name}
+                    </button>
+                  );
+                })}
+              </nav>
+            </div>
+            
+            {/* Promo Card at bottom of sidebar */}
+            <div className="glass-panel p-4 relative overflow-hidden bg-gradient-to-b from-purple-950/20 to-indigo-950/30 border border-purple-900/15 rounded-2xl text-center shadow-lg">
+              <div className="w-10 h-10 rounded-full bg-purple-500/10 text-purple-500 rounded-full flex items-center justify-center mx-auto mb-3 border border-purple-500/20">
+                <Sparkles className="w-4 h-4 animate-pulse" />
+              </div>
+              <h4 className="text-xs font-bold text-slate-800 dark:text-white leading-normal">Your feedback drives growth!</h4>
+              <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">Every review helps make a difference.</p>
+            </div>
+          </aside>
+        )}
+        
+        {/* Right content area wrapper */}
+        <div className="flex-1 flex flex-col min-w-0">
+
       {/* Floating Pill Header (Only when logged in) */}
       {token && (
         <header className="w-full max-w-6xl mx-auto px-4 pt-6 pb-2 sticky top-0 z-30 print:hidden">
@@ -957,16 +1023,22 @@ function App() {
           {token && currentView === 'student-dashboard' && (
             <div className="space-y-6 max-w-6xl mx-auto py-6 animate-fade-in-up">
               {/* Welcome Banner */}
-              <div className="glass-panel p-6 relative overflow-hidden border-l-4 border-l-indigo-500 rounded-tr-[40px] rounded-bl-[40px] rounded-tl-none rounded-br-none shadow-[0_20px_40px_-15px_rgba(99,102,241,0.15)]">
-                <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-blue-600 via-violet-500 to-cyan-500"></div>
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative z-10">
-                  <div>
-                    <span className="text-[10px] font-bold text-indigo-500 dark:text-indigo-400 uppercase tracking-widest block">Student Console</span>
-                    <h2 className="text-3xl font-normal font-serif-display text-slate-900 dark:text-white mt-1.5 tracking-wide">Welcome back, {user?.full_name || 'Student'}!</h2>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                      Roll Number: <span className="font-semibold text-slate-700 dark:text-slate-200">{user?.roll_number}</span> | Department: <span className="font-semibold text-slate-700 dark:text-slate-200">{user?.department}</span>
-                    </p>
-                  </div>
+              <div className="glass-panel relative overflow-hidden border border-violet-900/15 bg-gradient-to-r from-purple-950/25 via-indigo-950/20 to-slate-950/30 p-6 md:p-8 rounded-3xl rounded-br-[60px] flex flex-col md:flex-row justify-between items-start md:items-center gap-6 shadow-2xl shadow-purple-950/10">
+                <div className="absolute top-0 inset-x-0 h-[1.5px] bg-gradient-to-r from-purple-600 via-indigo-500 to-cyan-500"></div>
+                <div className="relative z-10">
+                  <span className="text-[10px] font-bold text-purple-400 uppercase tracking-widest block">Student Console</span>
+                  <h2 className="text-3xl md:text-4xl font-normal font-serif-display text-slate-900 dark:text-white mt-2 tracking-wide leading-tight">
+                    Welcome back,<br />
+                    <span className="font-semibold text-purple-400 dark:text-purple-300">{user?.full_name || 'Student'}!</span> 👋
+                  </h2>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-4 flex flex-wrap gap-x-4 gap-y-1">
+                    <span>Roll Number: <strong className="text-slate-800 dark:text-slate-200 font-semibold">{user?.roll_number}</strong></span>
+                    <span className="text-slate-300 dark:text-slate-700 hidden sm:inline">|</span>
+                    <span>Department: <strong className="text-slate-800 dark:text-slate-200 font-semibold">{user?.department}</strong></span>
+                  </p>
+                </div>
+                
+                <div className="flex flex-col items-center gap-2 shrink-0 self-end md:self-auto relative z-10">
                   <button 
                     onClick={() => {
                       setStudentForm(prev => ({
@@ -978,63 +1050,94 @@ function App() {
                       setFormStep(0);
                       setCurrentView('student');
                     }}
-                    className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition hover-glow-blue cursor-pointer"
+                    className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-650 hover:from-purple-500 hover:to-indigo-550 text-white px-5 py-3 rounded-2xl text-xs font-bold transition-all duration-300 hover:scale-[1.03] shadow-lg shadow-purple-500/25 cursor-pointer"
                   >
-                    <FileText className="w-4 h-4" /> Share New Feedback
+                    <Send className="w-4 h-4" /> Share New Feedback
                   </button>
+                  <span className="text-[10px] text-slate-550 dark:text-slate-400 italic">Help your peers grow!</span>
                 </div>
               </div>
 
               {/* Statistics Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {/* Metric 1: Total Feedbacks */}
-                <div className="glass-panel p-6 flex items-center justify-between border-l-4 border-l-blue-500 rounded-tr-[24px] rounded-bl-[24px] rounded-tl-none rounded-br-none hover:scale-[1.02] transition-transform duration-350 shadow-[0_15px_30px_-10px_rgba(59,130,246,0.15)]">
-                  <div>
-                    <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 block uppercase">Evaluations Completed</span>
-                    <h3 className="text-3xl font-extrabold text-slate-900 dark:text-white mt-2">{(feedbacks || []).length}</h3>
+                <div className="glass-panel p-6 flex items-center justify-between border-l-4 border-l-purple-500 rounded-tr-[24px] rounded-bl-[24px] rounded-tl-none rounded-br-none hover:scale-[1.02] transition-transform duration-350 shadow-[0_15px_30px_-10px_rgba(139,92,246,0.15)]">
+                  <div className="flex-1">
+                    <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 block uppercase tracking-wider">Evaluations Completed</span>
+                    <h3 className="text-4xl font-extrabold text-slate-900 dark:text-white mt-2">{(feedbacks || []).length}</h3>
+                    <div className="w-[85%] bg-slate-200 dark:bg-slate-800 rounded-full h-1 mt-4 overflow-hidden">
+                      <div className="bg-purple-500 h-full" style={{ width: `${Math.min(100, ((feedbacks || []).length / 10) * 100)}%` }}></div>
+                    </div>
+                    <span className="text-[10px] text-purple-600 dark:text-purple-400 font-semibold block mt-1.5">Keep going! 🚀</span>
                   </div>
-                  <div className="w-12 h-12 bg-blue-500/10 text-blue-500 rounded-xl flex items-center justify-center border border-blue-500/20">
-                    <CheckCircle className="w-6 h-6" />
+                  <div className="w-11 h-11 bg-purple-500/10 text-purple-500 rounded-xl flex items-center justify-center border border-purple-500/15 shrink-0">
+                    <CheckCircle className="w-5 h-5" />
                   </div>
                 </div>
 
                 {/* Metric 2: Average Rating Given */}
                 <div className="glass-panel p-6 flex items-center justify-between border-l-4 border-l-amber-500 rounded-tl-[24px] rounded-br-[24px] rounded-tr-none rounded-bl-none hover:scale-[1.02] transition-transform duration-350 shadow-[0_15px_30px_-10px_rgba(245,158,11,0.15)]">
-                  <div>
-                    <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 block uppercase">Average Rating Given</span>
-                    <h3 className="text-3xl font-extrabold text-slate-900 dark:text-white mt-2 flex items-center gap-1.5">
-                      {(feedbacks || []).length > 0 
+                  <div className="flex-1">
+                    <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 block uppercase tracking-wider">Average Rating Given</span>
+                    <h3 className="text-4xl font-extrabold text-slate-900 dark:text-white mt-2 flex items-baseline gap-1">
+                      {((feedbacks || []).length > 0 
                         ? ((feedbacks || []).reduce((acc, f) => acc + f.rating, 0) / (feedbacks || []).length).toFixed(1) 
-                        : '0.0'}
-                      <span className="text-sm font-normal text-slate-400">/ 5.0</span>
+                        : '0.0')}
+                      <span className="text-sm font-normal text-slate-550 dark:text-slate-500">/ 5.0</span>
                     </h3>
+                    <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold block mt-6">You're doing great! 🎉</span>
                   </div>
-                  <div className="w-12 h-12 bg-amber-500/10 text-amber-500 rounded-xl flex items-center justify-center border border-amber-500/20">
-                    <Star className="w-6 h-6 fill-amber-500" />
+                  <div className="w-11 h-11 bg-amber-500/10 text-amber-500 rounded-xl flex items-center justify-center border border-amber-500/15 shrink-0">
+                    <Star className="w-5 h-5 fill-amber-500" />
                   </div>
                 </div>
 
                 {/* Metric 3: Sentiment Summary */}
-                <div className="glass-panel p-6 flex items-center justify-between sm:col-span-2 lg:col-span-1 border-l-4 border-l-emerald-500 rounded-tr-[24px] rounded-bl-[24px] rounded-tl-none rounded-br-none hover:scale-[1.02] transition-transform duration-350 shadow-[0_15px_30px_-10px_rgba(16,185,129,0.15)]">
-                  <div>
-                    <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 block uppercase">Sentiment Breakdown</span>
-                    <div className="flex gap-4 mt-2">
-                      <div className="text-center">
-                        <span className="text-xs text-slate-400 block">Pos</span>
-                        <span className="text-sm font-bold text-emerald-500">{(feedbacks || []).filter(f => f.sentiment === 'Positive').length}</span>
+                <div className="glass-panel p-6 flex items-center justify-between border-l-4 border-l-emerald-500 rounded-tr-[24px] rounded-bl-[24px] rounded-tl-none rounded-br-none hover:scale-[1.02] transition-transform duration-350 shadow-[0_15px_30px_-10px_rgba(16,185,129,0.15)]">
+                  <div className="flex-1">
+                    <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 block uppercase tracking-wider">Sentiment Breakdown</span>
+                    <div className="flex items-center justify-between gap-2 mt-2">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
+                          <span className="text-[10px] text-slate-600 dark:text-slate-350">Pos: <strong>{(feedbacks || []).filter(f => f.sentiment === 'Positive').length}</strong></span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-1.5 h-1.5 rounded-full bg-amber-450"></div>
+                          <span className="text-[10px] text-slate-600 dark:text-slate-350">Neu: <strong>{(feedbacks || []).filter(f => f.sentiment === 'Neutral').length}</strong></span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-1.5 h-1.5 rounded-full bg-rose-500"></div>
+                          <span className="text-[10px] text-slate-600 dark:text-slate-350">Neg: <strong>{(feedbacks || []).filter(f => f.sentiment === 'Negative').length}</strong></span>
+                        </div>
                       </div>
-                      <div className="text-center">
-                        <span className="text-xs text-slate-400 block">Neu</span>
-                        <span className="text-sm font-bold text-blue-405">{(feedbacks || []).filter(f => f.sentiment === 'Neutral').length}</span>
-                      </div>
-                      <div className="text-center">
-                        <span className="text-xs text-slate-400 block">Neg</span>
-                        <span className="text-sm font-bold text-rose-500">{(feedbacks || []).filter(f => f.sentiment === 'Negative').length}</span>
+                      <div className="w-14 h-14 shrink-0 relative mr-1">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie
+                              data={[
+                                { name: 'Pos', value: (feedbacks || []).filter(f => f.sentiment === 'Positive').length || 1 },
+                                { name: 'Neu', value: (feedbacks || []).filter(f => f.sentiment === 'Neutral').length || 0 },
+                                { name: 'Neg', value: (feedbacks || []).filter(f => f.sentiment === 'Negative').length || 0 }
+                              ]}
+                              cx="50%"
+                              cy="50%"
+                              innerRadius={15}
+                              outerRadius={22}
+                              paddingAngle={1}
+                              dataKey="value"
+                            >
+                              <Cell fill="#10b981" />
+                              <Cell fill="#f59e0b" />
+                              <Cell fill="#f43f5e" />
+                            </Pie>
+                          </PieChart>
+                        </ResponsiveContainer>
                       </div>
                     </div>
                   </div>
-                  <div className="w-12 h-12 bg-violet-500/10 text-violet-500 rounded-xl flex items-center justify-center border border-violet-500/20">
-                    <Activity className="w-6 h-6" />
+                  <div className="w-11 h-11 bg-emerald-500/10 text-emerald-500 rounded-xl flex items-center justify-center border border-emerald-500/15 shrink-0">
+                    <Activity className="w-5 h-5" />
                   </div>
                 </div>
               </div>
@@ -1056,7 +1159,13 @@ function App() {
                     ) : (
                       <div className="space-y-4">
                         {(feedbacks || []).map((fb) => (
-                          <div key={fb.id} className="p-4 bg-white/5 border border-white/8 rounded-2xl flex flex-col sm:flex-row justify-between items-start gap-4 hover:bg-white/10 hover:border-white/15 transition-all duration-300">
+                          <div key={fb.id} className={`p-4 bg-white/5 border border-white/8 rounded-2xl flex flex-col sm:flex-row justify-between items-start gap-4 hover:bg-white/10 hover:border-white/15 transition-all duration-300 border-l-4 ${
+                            fb.sentiment === 'Positive' 
+                              ? 'border-l-emerald-500' 
+                              : fb.sentiment === 'Negative'
+                              ? 'border-l-rose-500'
+                              : 'border-l-amber-500'
+                          }`}>
                             <div className="space-y-1 flex-1">
                               <div className="flex flex-wrap items-center gap-2">
                                 <span className="text-[10px] font-bold text-blue-450 bg-blue-500/10 px-2.5 py-0.5 rounded-full border border-blue-500/20">
@@ -1149,6 +1258,25 @@ function App() {
                 </div>
 
               </div>
+
+              {/* Footer Streak & Level Bar */}
+              <div className="glass-panel p-4 flex flex-col sm:flex-row justify-between items-center gap-4 border-t border-t-purple-500/20 bg-gradient-to-r from-purple-950/20 to-indigo-950/20 rounded-2xl shadow-lg">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm">🏆</span>
+                  <p className="text-[11px] font-medium text-slate-650 dark:text-slate-400">
+                    Keep sharing. Keep improving. You're building a better learning experience! <span className="text-purple-600 dark:text-purple-400">💜</span>
+                  </p>
+                </div>
+                <div className="flex items-center gap-3 shrink-0">
+                  <div className="flex items-center gap-1 bg-amber-500/10 text-amber-600 dark:text-amber-500 border border-amber-500/20 px-3 py-1 rounded-full text-[10px] font-bold">
+                    <span>🔥</span> 2 Day Streak
+                  </div>
+                  <div className="flex items-center gap-1 bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 px-3 py-1 rounded-full text-[10px] font-bold">
+                    <span>⭐</span> Level 3
+                  </div>
+                </div>
+              </div>
+
             </div>
           )}
 
@@ -2977,6 +3105,9 @@ function App() {
           </div>
         </div>
       )}
+
+        </div>
+      </div>
 
       {/* Scroll Up & Down Floating Buttons */}
       {showScrollButtons && (
