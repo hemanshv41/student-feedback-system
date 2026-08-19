@@ -776,6 +776,11 @@ function App() {
       <div className="absolute bottom-[-10%] right-[-10%] w-[60vw] h-[60vw] rounded-full bg-gradient-to-br from-indigo-500/15 via-purple-500/10 to-pink-500/5 blur-[140px] animate-aurora-2 pointer-events-none z-0"></div>
       <div className="absolute top-[40%] left-[30%] w-[45vw] h-[45vw] rounded-full bg-gradient-to-tr from-cyan-500/10 to-blue-500/5 blur-[120px] animate-aurora-1 pointer-events-none z-0"></div>
 
+      {/* Decorative Organic Capsules (Floating UI Reference) */}
+      <div className="decor-capsule decor-capsule-1 top-[15%] left-[5%] opacity-60"></div>
+      <div className="decor-capsule decor-capsule-2 bottom-[20%] right-[8%] opacity-40"></div>
+      <div className="decor-capsule decor-capsule-1 top-[60%] left-[40%] opacity-30"></div>
+
       {/* Floating Pill Header (Only when logged in) */}
       {token && (
         <header className="w-full max-w-6xl mx-auto px-4 pt-6 pb-2 sticky top-0 z-30 print:hidden">
@@ -927,8 +932,8 @@ function App() {
           {token && currentView === 'student-dashboard' && (
             <div className="space-y-6 max-w-6xl mx-auto py-6 animate-fade-in-up">
               {/* Welcome Banner */}
-              <div className="glass-panel p-6 relative overflow-hidden">
-                <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-blue-655 via-violet-500 to-cyan-500"></div>
+              <div className="glass-panel p-6 relative overflow-hidden border-l-4 border-l-indigo-500 rounded-tr-[40px] rounded-bl-[40px] rounded-tl-none rounded-br-none shadow-[0_20px_40px_-15px_rgba(99,102,241,0.15)]">
+                <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-blue-600 via-violet-500 to-cyan-500"></div>
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative z-10">
                   <div>
                     <span className="text-[10px] font-bold text-blue-500 uppercase tracking-widest block">Student Console</span>
@@ -958,7 +963,7 @@ function App() {
               {/* Statistics Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {/* Metric 1: Total Feedbacks */}
-                <div className="glass-panel p-6 flex items-center justify-between">
+                <div className="glass-panel p-6 flex items-center justify-between border-l-4 border-l-blue-500 rounded-tr-[24px] rounded-bl-[24px] rounded-tl-none rounded-br-none hover:scale-[1.02] transition-transform duration-350 shadow-[0_15px_30px_-10px_rgba(59,130,246,0.15)]">
                   <div>
                     <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 block uppercase">Evaluations Completed</span>
                     <h3 className="text-3xl font-extrabold text-slate-900 dark:text-white mt-2">{(feedbacks || []).length}</h3>
@@ -969,7 +974,7 @@ function App() {
                 </div>
 
                 {/* Metric 2: Average Rating Given */}
-                <div className="glass-panel p-6 flex items-center justify-between">
+                <div className="glass-panel p-6 flex items-center justify-between border-l-4 border-l-amber-500 rounded-tl-[24px] rounded-br-[24px] rounded-tr-none rounded-bl-none hover:scale-[1.02] transition-transform duration-350 shadow-[0_15px_30px_-10px_rgba(245,158,11,0.15)]">
                   <div>
                     <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 block uppercase">Average Rating Given</span>
                     <h3 className="text-3xl font-extrabold text-slate-900 dark:text-white mt-2 flex items-center gap-1.5">
@@ -985,7 +990,7 @@ function App() {
                 </div>
 
                 {/* Metric 3: Sentiment Summary */}
-                <div className="glass-panel p-6 flex items-center justify-between sm:col-span-2 lg:col-span-1">
+                <div className="glass-panel p-6 flex items-center justify-between sm:col-span-2 lg:col-span-1 border-l-4 border-l-emerald-500 rounded-tr-[24px] rounded-bl-[24px] rounded-tl-none rounded-br-none hover:scale-[1.02] transition-transform duration-350 shadow-[0_15px_30px_-10px_rgba(16,185,129,0.15)]">
                   <div>
                     <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 block uppercase">Sentiment Breakdown</span>
                     <div className="flex gap-4 mt-2">
@@ -1812,7 +1817,7 @@ function App() {
             <div className="space-y-6">
               
               {/* FILTER BAR SECTION */}
-              <div className="glass-panel p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 print:hidden">
+              <div className="glass-panel p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 print:hidden border-l-4 border-l-violet-500 rounded-tr-[24px] rounded-bl-[24px] rounded-tl-none rounded-br-none shadow-[0_15px_30px_-10px_rgba(139,92,246,0.15)]">
                 <div className="flex items-center gap-2">
                   <Filter className="w-4 h-4 text-blue-500" />
                   <span className="text-sm font-semibold text-slate-200">Filter Analytics:</span>
@@ -1873,7 +1878,7 @@ function App() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     
                     {/* Card 1: Total Feedback */}
-                    <div className="glass-panel p-5 flex flex-col justify-between">
+                    <div className="glass-panel p-5 flex flex-col justify-between border-l-4 border-l-blue-500 rounded-tr-[24px] rounded-bl-[24px] rounded-tl-none rounded-br-none hover:scale-[1.02] transition-transform duration-350 shadow-[0_15px_30px_-10px_rgba(59,130,246,0.15)]">
                       <div className="flex justify-between items-start">
                         <div>
                           <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Total Submissions</p>
@@ -1889,7 +1894,7 @@ function App() {
                     </div>
 
                     {/* Card 2: Average Rating */}
-                    <div className="glass-panel p-5 flex flex-col justify-between">
+                    <div className="glass-panel p-5 flex flex-col justify-between border-l-4 border-l-amber-500 rounded-tl-[24px] rounded-br-[24px] rounded-tr-none rounded-bl-none hover:scale-[1.02] transition-transform duration-350 shadow-[0_15px_30px_-10px_rgba(245,158,11,0.15)]">
                       <div className="flex justify-between items-start">
                         <div>
                           <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Average Rating</p>
@@ -1918,7 +1923,7 @@ function App() {
                     </div>
 
                     {/* Card 3: Sentiment Breakdown */}
-                    <div className="glass-panel p-5 flex flex-col justify-between">
+                    <div className="glass-panel p-5 flex flex-col justify-between border-l-4 border-l-emerald-500 rounded-tr-[24px] rounded-bl-[24px] rounded-tl-none rounded-br-none hover:scale-[1.02] transition-transform duration-350 shadow-[0_15px_30px_-10px_rgba(16,185,129,0.15)]">
                       <div className="flex justify-between items-start">
                         {(() => {
                           const total = dashboardData.total_feedback;
@@ -1956,7 +1961,7 @@ function App() {
                     </div>
 
                     {/* Card 4: Actionable recommendations count */}
-                    <div className="glass-panel p-5 flex flex-col justify-between">
+                    <div className="glass-panel p-5 flex flex-col justify-between border-l-4 border-l-rose-500 rounded-tl-[24px] rounded-br-[24px] rounded-tr-none rounded-bl-none hover:scale-[1.02] transition-transform duration-350 shadow-[0_15px_30px_-10px_rgba(244,63,94,0.15)]">
                       <div className="flex justify-between items-start">
                         <div>
                           <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Critical Alerts</p>

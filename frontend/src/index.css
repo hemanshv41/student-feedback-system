@@ -18,36 +18,36 @@ html {
 
 /* Frosted Whitish Glassmorphism tokens */
 .glass-panel {
-  background: rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(40px) saturate(180%);
-  -webkit-backdrop-filter: blur(40px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.5), inset 0 1px 0 0 rgba(255, 255, 255, 0.12);
-  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(25px) saturate(150%);
+  -webkit-backdrop-filter: blur(25px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.35), inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
+  border-radius: 20px;
   transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .glass-panel-hover:hover {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(255, 255, 255, 0.22);
-  box-shadow: 0 40px 80px -10px rgba(0, 0, 0, 0.65), inset 0 1px 0 0 rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 30px 60px -10px rgba(0, 0, 0, 0.5), inset 0 1px 0 0 rgba(255, 255, 255, 0.08);
   transform: translateY(-2px);
 }
 
 .glass-pill-nav {
-  background: rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(30px) saturate(180%);
-  -webkit-backdrop-filter: blur(30px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(15, 17, 23, 0.6);
+  backdrop-filter: blur(25px) saturate(150%);
+  -webkit-backdrop-filter: blur(25px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 9999px;
-  box-shadow: 0 15px 40px -10px rgba(0, 0, 0, 0.4), inset 0 1px 0 0 rgba(255, 255, 255, 0.12);
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.25), inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
   transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .glass-input {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
   padding: 10px 16px;
   font-size: 14px;
   color: #ffffff;
@@ -129,5 +129,54 @@ select option {
 }
 .recharts-bar-rectangles {
   filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.4));
+}
+
+/* Decorative floating organic shapes */
+.decor-capsule {
+  position: absolute;
+  border-radius: 9999px;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.04) 0%, rgba(139, 92, 246, 0.02) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.02);
+  pointer-events: none;
+  z-index: 0;
+}
+.dark .decor-capsule {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.03) 0%, rgba(168, 85, 247, 0.01) 100%);
+}
+.decor-capsule-1 {
+  width: 380px;
+  height: 140px;
+  transform: rotate(-35deg);
+  animation: float-slow 22s ease-in-out infinite alternate;
+}
+.decor-capsule-2 {
+  width: 480px;
+  height: 160px;
+  transform: rotate(45deg);
+  animation: float-slow-reverse 26s ease-in-out infinite alternate;
+}
+
+@keyframes float-slow {
+  0% {
+    transform: translate(0px, 0px) rotate(-35deg) scale(1);
+  }
+  50% {
+    transform: translate(30px, -20px) rotate(-32deg) scale(1.03);
+  }
+  100% {
+    transform: translate(-15px, 25px) rotate(-38deg) scale(0.97);
+  }
+}
+
+@keyframes float-slow-reverse {
+  0% {
+    transform: translate(0px, 0px) rotate(45deg) scale(1);
+  }
+  50% {
+    transform: translate(-25px, 35px) rotate(48deg) scale(0.97);
+  }
+  100% {
+    transform: translate(15px, -15px) rotate(42deg) scale(1.03);
+  }
 }
 
