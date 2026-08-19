@@ -769,12 +769,38 @@ function App() {
   const BAR_COLORS = ['#3b82f6', '#06b6d4', '#8b5cf6', '#f59e0b', '#ef4444'];
 
   return (
-    <div className="relative min-h-screen bg-slate-50 dark:bg-[#080809] text-slate-800 dark:text-[#e4e4e7] flex flex-col font-sans transition-colors duration-300 overflow-x-hidden">
+    <div className="relative min-h-screen text-slate-800 dark:text-[#e4e4e7] flex flex-col font-sans transition-colors duration-300 overflow-x-hidden">
       
+      {/* Decorative Custom Background Lines (Creative Vector Graphics Reference 1 & 2) */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none z-0 opacity-[0.2] dark:opacity-[0.35]">
+        <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+          {/* Circular vector outlines */}
+          <circle cx="20%" cy="15%" r="320" stroke="url(#line-grad-1)" strokeWidth="0.5" fill="none" strokeDasharray="6 8" />
+          <circle cx="85%" cy="75%" r="480" stroke="url(#line-grad-2)" strokeWidth="0.5" fill="none" strokeDasharray="3 4" />
+          <circle cx="50%" cy="50%" r="580" stroke="url(#line-grad-1)" strokeWidth="0.5" fill="none" />
+          {/* Curved intersecting vectors */}
+          <path d="M-100,200 Q300,50 600,450 T1300,300" stroke="url(#line-grad-1)" strokeWidth="0.75" fill="none" />
+          <path d="M200,900 Q800,600 1200,950" stroke="url(#line-grad-2)" strokeWidth="0.5" fill="none" />
+          
+          <defs>
+            <linearGradient id="line-grad-1" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#4f46e5" stopOpacity="0.7" />
+              <stop offset="45%" stopColor="#c084fc" stopOpacity="0.35" />
+              <stop offset="100%" stopColor="#06b6d4" stopOpacity="0" />
+            </linearGradient>
+            <linearGradient id="line-grad-2" x1="100%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="#ec4899" stopOpacity="0.6" />
+              <stop offset="55%" stopColor="#3b82f6" stopOpacity="0.3" />
+              <stop offset="100%" stopColor="#10b981" stopOpacity="0" />
+            </linearGradient>
+          </defs>
+        </svg>
+      </div>
+
       {/* Liquid Aurora Background Glows */}
-      <div className="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] rounded-full bg-gradient-to-tr from-lime-500/10 to-emerald-500/5 blur-[120px] animate-aurora-1 pointer-events-none z-0"></div>
-      <div className="absolute bottom-[-10%] right-[-10%] w-[60vw] h-[60vw] rounded-full bg-gradient-to-br from-indigo-500/15 via-purple-500/10 to-pink-500/5 blur-[140px] animate-aurora-2 pointer-events-none z-0"></div>
-      <div className="absolute top-[40%] left-[30%] w-[45vw] h-[45vw] rounded-full bg-gradient-to-tr from-cyan-500/10 to-blue-500/5 blur-[120px] animate-aurora-1 pointer-events-none z-0"></div>
+      <div className="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] rounded-full bg-gradient-to-tr from-lime-500/5 to-emerald-500/3 blur-[120px] animate-aurora-1 pointer-events-none z-0"></div>
+      <div className="absolute bottom-[-10%] right-[-10%] w-[60vw] h-[60vw] rounded-full bg-gradient-to-br from-indigo-500/10 via-purple-500/8 to-pink-500/3 blur-[140px] animate-aurora-2 pointer-events-none z-0"></div>
+      <div className="absolute top-[40%] left-[30%] w-[45vw] h-[45vw] rounded-full bg-gradient-to-tr from-cyan-500/8 to-blue-500/3 blur-[120px] animate-aurora-1 pointer-events-none z-0"></div>
 
       {/* Decorative Organic Capsules (Floating UI Reference) */}
       <div className="decor-capsule decor-capsule-1 top-[15%] left-[5%] opacity-60"></div>
