@@ -7,20 +7,13 @@ body {
   background: radial-gradient(circle at 50% 50%, #0e0d16 0%, #040405 100%);
 }
 
-/* Custom scrollbars for dashboard views */
-.custom-scrollbar::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+/* Remove scroll bar from website globally while keeping scroll functionality */
+html {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
 }
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.2);
-}
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 99px;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.12);
+::-webkit-scrollbar {
+  display: none; /* Chrome, Safari and Opera */
 }
 
 /* Frosted Whitish Glassmorphism tokens */
