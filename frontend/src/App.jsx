@@ -210,7 +210,7 @@ function App() {
     { id: 1, sender: 'bot', text: "👋 Hello Administrator! I'm your Academic Assistant. I can summarize feedback, retrieve issue statistics, or identify low satisfaction departments. Ask me anything!" }
   ]);
   const [chatbotTyping, setChatbotTyping] = useState(false);
-  const chatEndRef = useRef(null);
+  const chatContainerRef = useRef(null);
 
   // User Management state
   const [usersList, setUsersList] = useState([]);
@@ -314,7 +314,12 @@ function App() {
 
   // Scroll to bottom of chat
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTo({
+        top: chatContainerRef.current.scrollHeight,
+        behavior: 'smooth'
+      });
+    }
   }, [chatMessages, chatbotTyping]);
 
   // Helper API Fetch wrapper
@@ -2246,7 +2251,7 @@ function App() {
                     <div className="lg:col-span-2 glass-panel p-4 flex flex-col h-[340px]">
                       
                       {/* Chat Messages */}
-                      <div className="flex-1 overflow-y-auto custom-scrollbar space-y-3 pr-1 text-xs">
+                      <div ref={chatContainerRef} className="flex-1 overflow-y-auto custom-scrollbar space-y-3 pr-1 text-xs scroll-smooth">
                         {chatMessages.map(msg => (
                           <div 
                             key={msg.id} 
@@ -2264,7 +2269,6 @@ function App() {
                             Assistant typing...
                           </div>
                         )}
-                        <div ref={chatEndRef} />
                       </div>
 
                       {/* Chat Presets */}
